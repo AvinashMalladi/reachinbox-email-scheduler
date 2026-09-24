@@ -1,0 +1,19 @@
+{
+  "name": "reachinbox-email-scheduler",
+  "private": true,
+  "version": "1.0.0",
+  "description": "ReachInbox-style production email scheduler: BullMQ + Redis + Postgres + Ethereal + Elasticsearch + React dashboard",
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "setup": "docker compose up -d && npm --prefix server run migrate && npm --prefix server run seed",
+    "dev:server": "npm --prefix server run dev",
+    "dev:web": "npm --prefix web run dev",
+    "dev": "concurrently -n server,web -c blue,magenta \"npm run dev:server\" \"npm run dev:web\"",
+    "build": "npm --prefix server run build && npm --prefix web run build",
+    "typecheck": "npm --prefix server run typecheck && npm --prefix web run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
