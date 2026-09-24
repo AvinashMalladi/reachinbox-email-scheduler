@@ -41,7 +41,7 @@ export async function initSearch(): Promise<void> {
     console.warn('[search] search disabled via ES_ENABLED=false');
     return;
   }
-  client = new Client({ node: env.ELASTICSEARCH_URL, requestTimeout: 3000, pingTimeout: 2000 });
+  client = new Client({ node: env.ELASTICSEARCH_URL, requestTimeout: 1200, pingTimeout: 1000 });
   try {
     await client.ping();
     const res = (await client.indices.exists({ index: INDEX })) as { exists?: boolean } | boolean;

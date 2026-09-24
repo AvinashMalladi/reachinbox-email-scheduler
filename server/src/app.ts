@@ -50,7 +50,8 @@ app.use((_req, res) => {
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const status = err.name === 'ZodError' ? 400 : 500;
-  console.error(`[error] ${status}:`, err);
+  console.error(`[error] ${status}:`, err instanceof Error ? err.message : err);
+  if (err instanceof Error && err.stack) console.error(err.stack.split('\n').slice(0, 5).join('\n'));
   res.status(status).json({
     error: err.name === 'ZodError' ? 'Invalid request' : 'Internal server error',
     detail: err instanceof Error ? err.message : undefined,

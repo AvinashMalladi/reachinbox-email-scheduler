@@ -21,63 +21,80 @@ function parseSenderList(): SenderCredential[] {
 }
 
 async function provisionTestAccounts(count: number): Promise<SenderCredential[]> {
+  if (count <= 0) return [];
+  // One throwaway account per sender, created in parallel.
+  const settled = await Promise.allSettled(
+    Array.from({ length: count }, () => nodemailer.createTestAccount().catch(() => null)),
+  );
   const seen = new Set<string>();
   const out: SenderCredential[] = [];
-  let attempts = 0;
-  while (out.length < count && attempts < count * 3) {
-    attempts++;
-    const account = await nodemailer.createTestAccount();
-    if (seen.has(account.user)) continue; // Ethereal can dedupe rapid calls
-    seen.add(account.user);
-    out.push({ email: account.user, pass: account.pass });
+  for (const item of settled) {
+    if (item.status !== 'fulfilled' || !item.value) continue;
+    if (seen.has(item.value.user)) continue; // Ethereal can dedupe rapid calls
+    seen.add(item.value.user);
+    out.push({ email: item.value.user, pass: item.value.pass });
   }
   return out;
 }
+
+let provisioningPromise: Promise<SenderRow[]> | null = null;
 
 /**
  * Ensure sender accounts are persisted in the DB. Resolution order:
  *   1. ETHEREAL_SENDERS (explicit multi sender list, most reliable)
  *   2. ETHEREAL_USER / ETHEREAL_PASSWORD (single account)
  *   3. Auto-provision ETHEREAL_SENDERS_COUNT throwaway accounts via the API
+ *
+ * Idempotent & single-flight: concurrent callers await the same in-progress
+ * provisioning instead of hitting the Ethereal API repeatedly.
  */
-export async function ensureEtherealSenders(count = env.ETHEREAL_SENDERS_COUNT): Promise<SenderRow[]> {
-  const existing = await knex('senders').orderBy('created_at', 'asc');
-
-  if (existing.length >= count) {
-    return existing;
+export function ensureEtherealSenders(count = env.ETHEREAL_SENDERS_COUNT): Promise<SenderRow[]> {
+  if (provisioningPromise) {
+    return provisioningPromise.then(() => knex('senders').orderBy('created_at', 'asc'));
   }
 
-  const missing = count - existing.length;
-  const wanted: SenderCredential[] = parseSenderList();
+  provisioningPromise = (async () => {
+    const existing = await knex('senders').orderBy('created_at', 'asc');
 
-  if (!wanted.length && env.ETHEREAL_USER && env.ETHEREAL_PASSWORD) {
-    wanted.push({ email: env.ETHEREAL_USER, pass: env.ETHEREAL_PASSWORD });
-  }
+    if (existing.length >= count) {
+      return existing;
+    }
 
-  // Top up with auto-provisioned accounts if the config doesn't cover `count`.
-  while (wanted.length < missing) {
-    const [account] = await provisionTestAccounts(missing - wanted.length);
-    if (!account) break;
-    wanted.push(account);
-  }
+    const missing = count - existing.length;
+    const wanted: SenderCredential[] = parseSenderList();
 
-  const base = existing.length + 1;
-  const rows = wanted.slice(0, missing).map((cred, i) => ({
-    user_id: null,
-    email: cred.email,
-    name: `Ethereal Sender ${base + i}`,
-    host: 'smtp.ethereal.email',
-    port: 587,
-    username: cred.email,
-    password: cred.pass,
-    is_ethereal: true,
-  }));
+    if (!wanted.length && env.ETHEREAL_USER && env.ETHEREAL_PASSWORD) {
+      wanted.push({ email: env.ETHEREAL_USER, pass: env.ETHEREAL_PASSWORD });
+    }
 
-  if (rows.length) {
-    await knex('senders').insert(rows).onConflict('email').ignore();
-  }
+    // Top up with auto-provisioned accounts if config doesn't cover `count`.
+    if (wanted.length < missing) {
+      const accounts = await provisionTestAccounts(missing - wanted.length);
+      wanted.push(...accounts);
+    }
 
-  return knex('senders').orderBy('created_at', 'asc');
+    const base = existing.length + 1;
+    const rows = wanted.slice(0, missing).map((cred, i) => ({
+      user_id: null,
+      email: cred.email,
+      name: `Ethereal Sender ${base + i}`,
+      host: 'smtp.ethereal.email',
+      port: 587,
+      username: cred.email,
+      password: cred.pass,
+      is_ethereal: true,
+    }));
+
+    if (rows.length) {
+      await knex('senders').insert(rows).onConflict('email').ignore();
+    }
+
+    return knex('senders').orderBy('created_at', 'asc');
+  })().finally(() => {
+    provisioningPromise = null;
+  });
+
+  return provisioningPromise;
 }
 
 async function redisIncr(key: string): Promise<number> {

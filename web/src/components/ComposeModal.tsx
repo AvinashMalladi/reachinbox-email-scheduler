@@ -32,17 +32,27 @@ function initialForm(): FormState {
 export function ComposeModal({ open, onClose, onScheduled }: Props) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [fileName, setFileName] = useState<string | null>(null);
-  const [emails, setEmails] = useState<string[]>([]);
+  const [fileEmails, setFileEmails] = useState<string[]>([]);
+  const [manualEmails, setManualEmails] = useState('');
   const [invalidCount, setInvalidCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { push } = useToast();
 
+  const emails = useMemo(() => {
+    const manual = manualEmails
+      .split(/[\n,;]+/)
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean);
+    return [...new Set([...manual, ...fileEmails])];
+  }, [manualEmails, fileEmails]);
+
   const reset = () => {
     setForm(initialForm());
     setFileName(null);
-    setEmails([]);
+    setFileEmails([]);
+    setManualEmails('');
     setInvalidCount(0);
     setError(null);
     if (fileRef.current) fileRef.current.value = '';
@@ -64,7 +74,7 @@ export function ComposeModal({ open, onClose, onScheduled }: Props) {
           .map((v) => v.trim().toLowerCase().replace(/^["']|["']$/g, ''));
         const valid = raw.filter((v) => EMAIL_REGEX.test(v));
         const invalid = raw.filter((v) => v && !EMAIL_REGEX.test(v)).length;
-        setEmails([...new Set(valid)]);
+        setFileEmails([...new Set(valid)]);
         setInvalidCount(invalid);
       },
       error: () => {
@@ -129,9 +139,17 @@ export function ComposeModal({ open, onClose, onScheduled }: Props) {
         </Field>
 
         <Field
-          label="Leads file (CSV / TXT)"
-          hint="One email per line, or first column of a CSV. Duplicates are removed."
+          label="Recipients (manual)"
+          hint="Type email addresses separated by commas or new lines — no file needed."
         >
+          <Input
+            value={manualEmails}
+            onChange={(e) => setManualEmails(e.target.value)}
+            placeholder="alice@example.com, bob@example.com"
+          />
+        </Field>
+
+        <Field label="or import from file (CSV / TXT)" hint="One email per line, or first column of a CSV.">
           <div className="flex items-center gap-3">
             <input
               ref={fileRef}

@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Mail, Zap } from 'lucide-react';
 import { useAuth } from '../lib/auth';
+import { useToast } from '../lib/toast';
 import { Button } from '../components/ui';
 
 function GoogleIcon() {
@@ -26,7 +29,22 @@ function GoogleIcon() {
 }
 
 export function LoginPage() {
-  const { loginWithGoogle, demoLogin, config, loading } = useAuth();
+  const { user, loginWithGoogle, demoLogin, config, loading } = useAuth();
+  const navigate = useNavigate();
+  const { push } = useToast();
+
+  useEffect(() => {
+    if (user) navigate('/dashboard', { replace: true });
+  }, [user, navigate]);
+
+  const handleDemo = async () => {
+    try {
+      await demoLogin();
+      navigate('/dashboard', { replace: true });
+    } catch {
+      push('Demo login failed — is the server running?', 'error');
+    }
+  };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-50 via-slate-50 to-slate-50 px-4">
@@ -43,10 +61,26 @@ export function LoginPage() {
           <div className="mt-8 space-y-3">
             {loading ? null : (
               <>
-                <Button className="w-full" onClick={loginWithGoogle} disabled={!config?.googleConfigured}>
+                <Button
+                  className="w-full"
+                  onClick={loginWithGoogle}
+                  disabled={!config?.googleConfigured}
+                  title={
+                    config?.googleConfigured
+                      ? 'Sign in with Google'
+                      : 'Google OAuth is not configured on the server'
+                  }
+                >
                   <GoogleIcon />
                   Continue with Google
                 </Button>
+                {!config?.googleConfigured && (
+                  <p className="text-center text-xs text-slate-400">
+                    Google OAuth isn't configured on this server yet — use the demo account below, or add
+                    <code className="mx-1 rounded bg-slate-100 px-1 py-0.5 text-[11px]">GOOGLE_CLIENT_ID/SECRET</code>
+                    to <code className="rounded bg-slate-100 px-1 py-0.5 text-[11px]">server/.env</code>.
+                  </p>
+                )}
                 {config?.demoLogin ? (
                   <>
                     <div className="flex items-center gap-3 text-xs text-slate-400">
@@ -54,21 +88,11 @@ export function LoginPage() {
                       or
                       <span className="h-px flex-1 bg-slate-200" />
                     </div>
-                    <Button
-                      variant="secondary"
-                      className="w-full"
-                      onClick={() => demoLogin().catch(() => undefined)}
-                    >
+                    <Button variant="secondary" className="w-full" onClick={handleDemo}>
                       <Zap className="h-4 w-4 text-amber-500" />
                       Continue with Demo account
                     </Button>
                   </>
-                ) : null}
-                {!config?.googleConfigured && !config?.demoLogin ? (
-                  <p className="rounded-lg bg-amber-50 px-4 py-3 text-center text-xs text-amber-700 ring-1 ring-amber-200">
-                    OAuth not configured on the server. Set GOOGLE_CLIENT_ID/SECRET (or ENABLE_DEMO_LOGIN=true) and
-                    restart.
-                  </p>
                 ) : null}
               </>
             )}
