@@ -11,6 +11,37 @@ ReachInbox does under the hood.
 
 ---
 
+## ⚡ Quickstart for reviewers (5 minutes)
+
+```bash
+# 1. Copy the backend env file
+cp server/.env.example server/.env
+
+# 2. Enable the one-click demo login (no Google/Slack credentials needed)
+#    → open server/.env and set:
+#      ENABLE_DEMO_LOGIN=true          (login without Google OAuth)
+
+# 3. Install dependencies (backend + frontend)
+npm --prefix server install
+npm --prefix web install
+
+# 4. Start Redis + PostgreSQL + Elasticsearch, then migrate
+docker compose up -d
+npm --prefix server run migrate
+
+# 5. Run everything (API + BullMQ worker + dashboard)
+npm run dev
+```
+
+Then open **<http://localhost:5173>** → **Demo Login** → you're in.
+
+- No SMTP config needed — Ethereal senders are **auto-provisioned at boot**.
+- Elasticsearch is optional — search falls back to PostgreSQL `ILIKE` if ES isn't running.
+- Live queue dashboard: **<http://localhost:4000/admin/queues>** · Health: **<http://localhost:4000/api/health>**
+- (Optional) live Slack rate-limit alerts: see [Slack notifications](#slack-notifications-real) below.
+
+---
+
 ## ✨ Features
 
 ### Backend
