@@ -24,7 +24,7 @@ ReachInbox does under the hood.
 | **Hourly rate limit** | Redis counters keyed `rl:sender:{senderId}:{hourWindow}` and `rl:global:{hourWindow}`. Configurable via env (`MAX_EMAILS_PER_HOUR_PER_SENDER`, `MAX_EMAILS_PER_HOUR_GLOBAL`) and per-batch via `hourlyLimit`. When hit, jobs are **delayed into the next hour window** — never dropped, never failed. |
 | **Slack notifications** | Real **"Connect Slack" OAuth flow** (scope `chat:write,channels:read`). The moment a sender hits its hourly limit we call `chat.postMessage` (exactly one message per sender+hour). No connection → no crash, just a skip; connecting later starts notifications automatically. |
 | **Search** | Emails are indexed into Elasticsearch (`reachinbox-emails`) on create and status changes. `GET /api/emails/search?q=` searches recipient/subject/body; **falls back to SQL `ILIKE`** if ES is down. |
-| **Live queue dashboard** | Bull Board mounted at **`/admin/queues`** (behind the same login cookie). |
+| **Live queue dashboard** | Bull Board mounted at **<http://localhost:4000/admin/queues>** (behind the same login cookie). |
 | **Auth** | Real **Google OAuth** code flow → JWTs in a httpOnly cookie. Dev-only demo login behind `ENABLE_DEMO_LOGIN=true`. |
 | **Idempotency** | Stable BullMQ `jobId = email-<id>` **+** DB status guard in the worker (`only send if status === 'scheduled'`). No duplicate sends even if a job is requeued. |
 
@@ -116,18 +116,32 @@ npm run migrate             # create tables
 npm run dev                 # starts API + BullMQ worker (tsx --watch)
 ```
 
-Health check: `http://localhost:4000/api/health`
-Live queue dashboard: `http://localhost:4000/admin/queues` (login first)
+Health check: <http://localhost:4000/api/health>
+Live queue dashboard: <http://localhost:4000/admin/queues> (login first)
+Google OAuth start: <http://localhost:4000/api/auth/google>
+Slack connect: <http://localhost:4000/api/slack/connect>
 
 ### 3. Frontend
 
 ```bash
 cd web
 npm install
-npm run dev                 # http://localhost:5173
+npm run dev                 # <http://localhost:5173> (web app)
 ```
 
 `npm run dev` at the repo root runs backend + frontend together (via `concurrently`).
+
+### Local URLs (after `npm run dev`)
+
+| Service | URL |
+|---|---|
+| Web app (React dashboard) | <http://localhost:5173> |
+| API health check | <http://localhost:4000/api/health> |
+| BullMQ live queue dashboard | <http://localhost:4000/admin/queues> |
+| Google OAuth login | <http://localhost:4000/api/auth/google> |
+| Demo login (POST) | <http://localhost:4000/api/auth/demo> |
+| Slack connect | <http://localhost:4000/api/slack/connect> |
+| Elasticsearch (index `reachinbox-emails`) | <http://localhost:9200> |
 
 ---
 
@@ -190,18 +204,18 @@ npm run dev                 # http://localhost:5173
 
 ## 📡 API surface (all behind auth cookie except `/api/health`, `/api/auth/*` login routes)
 
-| Method | Path | Purpose |
+| Method | URL (served from `http://localhost:4000`) | Purpose |
 |---|---|---|
-| `GET`  | `/api/auth/google` · `/api/auth/google/callback` | Google OAuth |
-| `GET`  | `/api/auth/me` · `/api/auth/config` | Session / config check |
-| `POST` | `/api/auth/logout` · `/api/auth/demo` | Logout / dev demo login |
-| `POST` | `/api/emails/schedule` | `{subject, body, recipients[], scheduledAt, delayBetweenMs, hourlyLimit}` |
-| `GET`  | `/api/emails?status=&q=&limit=&offset=` | List (SQL filters) |
-| `GET`  | `/api/emails/search?q=` | Full-text search (Elasticsearch / SQL fallback) |
-| `POST` | `/api/emails/:id/retry` · `/api/emails/:id/cancel` | Retry a failed email / cancel a scheduled one |
-| `GET`  | `/api/senders` | Sender accounts |
-| `GET`  | `/api/slack/connect` · `/api/slack/callback` · `/api/slack/status` · `/api/slack/disconnect` | Slack OAuth + state |
-| `GET`  | `/admin/queues` | Live BullMQ dashboard |
+| `GET` | http://localhost:4000/api/auth/google · http://localhost:4000/api/auth/google/callback | Google OAuth |
+| `GET` | http://localhost:4000/api/auth/me · http://localhost:4000/api/auth/config | Session / config check |
+| `POST` | http://localhost:4000/api/auth/logout · http://localhost:4000/api/auth/demo | Logout / dev demo login |
+| `POST` | http://localhost:4000/api/emails/schedule | `{subject, body, recipients[], scheduledAt, delayBetweenMs, hourlyLimit}` |
+| `GET` | http://localhost:4000/api/emails?status=&q=&limit=&offset= | List (SQL filters) |
+| `GET` | http://localhost:4000/api/emails/search?q= | Full-text search (Elasticsearch / SQL fallback) |
+| `POST` | http://localhost:4000/api/emails/:id/retry · http://localhost:4000/api/emails/:id/cancel | Retry a failed email / cancel a scheduled one |
+| `GET` | http://localhost:4000/api/senders | Sender accounts |
+| `GET` | http://localhost:4000/api/slack/connect · http://localhost:4000/api/slack/callback · http://localhost:4000/api/slack/status · http://localhost:4000/api/slack/disconnect | Slack OAuth + state |
+| `GET` | http://localhost:4000/admin/queues | Live BullMQ dashboard |
 
 ---
 
