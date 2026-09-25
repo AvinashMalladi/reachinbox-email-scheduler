@@ -53,6 +53,30 @@ export function ensureEtherealSenders(count = env.ETHEREAL_SENDERS_COUNT): Promi
     return provisioningPromise.then(() => knex('senders').orderBy('created_at', 'asc'));
   }
 
+  if (env.SMTP_HOST) {
+    // Real SMTP relay mode (e.g. Gmail/Brevo/SMTP2GO) — hosted deploys where
+    // Ethereal's SMTP is unreachable. Replaces any auto-provisioned Ethereal rows.
+    provisioningPromise = (async () => {
+      await knex('senders').where({ is_ethereal: true }).del();
+      const relayRows = Array.from({ length: count }, (_, i) => ({
+        user_id: null,
+        email: env.SMTP_USER ?? `smtp@${env.SMTP_HOST}`,
+        name: `Relay Sender ${i + 1}`,
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_SECURE,
+        username: env.SMTP_USER ?? '',
+        password: env.SMTP_PASSWORD ?? '',
+        is_ethereal: false,
+      }));
+      for (const row of relayRows) {
+        await knex('senders').insert(row).onConflict('email').ignore();
+      }
+      return knex('senders').orderBy('created_at', 'asc');
+    })();
+    return provisioningPromise;
+  }
+
   provisioningPromise = (async () => {
     const existing = await knex('senders').orderBy('created_at', 'asc');
 

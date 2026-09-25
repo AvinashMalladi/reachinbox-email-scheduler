@@ -15,7 +15,7 @@ export async function sendEmail(opts: {
   const transporter = nodemailer.createTransport({
     host: opts.sender.host,
     port: opts.sender.port,
-    secure: false,
+    secure: opts.sender.secure ?? false,
     auth: { user: opts.sender.username, pass: opts.sender.password },
     connectionTimeout: 15000,
     greetingTimeout: 15000,

@@ -66,7 +66,7 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 | **PostgreSQL** | Neon | Free serverless Postgres (14GB) — copy its *connection string* |
 | **Redis** | Upstash | Free Redis (TLS) — copy its `REDIS_URL` |
 | **Elasticsearch** | — (optional) | Set `ES_ENABLED=false`; search falls back to Postgres `ILIKE`. The demo video shows live ES queries from the local setup. |
-| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed |
+| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed. If Ethereal's SMTP is unreachable from a cloud egress IP, set `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_SECURE` env vars to relay through a real SMTP provider (e.g. Gmail App Password: `smtp.gmail.com:465`, `SMTP_SECURE=true`). |
 | **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). |
 
 **Deploy steps (≈10 min):**

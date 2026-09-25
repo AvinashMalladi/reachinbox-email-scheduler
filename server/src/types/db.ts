@@ -18,6 +18,7 @@ export type SenderRow = {
   port: number;
   username: string;
   password: string;
+  secure?: boolean;
   is_ethereal: boolean;
   created_at: Date;
   updated_at: Date;
