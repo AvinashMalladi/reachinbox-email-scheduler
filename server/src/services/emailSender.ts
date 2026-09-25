@@ -17,6 +17,9 @@ export async function sendEmail(opts: {
     port: opts.sender.port,
     secure: false,
     auth: { user: opts.sender.username, pass: opts.sender.password },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
   });
 
   const info = await transporter.sendMail({
