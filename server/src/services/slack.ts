@@ -22,7 +22,14 @@ export async function saveSlackConnection(userId: string, data: {
       channel_id: data.channelId ?? null,
     })
     .onConflict('user_id')
-    .merge({ updated_at: knex.fn.now(), ...data });
+    .merge({
+      updated_at: knex.fn.now(),
+      team_id: data.teamId ?? null,
+      team_name: data.teamName ?? null,
+      access_token: data.accessToken,
+      bot_user_id: data.botUserId ?? null,
+      channel_id: data.channelId ?? null,
+    });
 }
 
 export async function deleteSlackConnection(userId: string): Promise<void> {
