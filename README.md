@@ -9,6 +9,17 @@ ReachInbox does under the hood.
 > re-sending jobs, notifies **Slack** when an hourly rate limit is hit, and logs users in with
 > **real Google OAuth**.
 
+## 🔴 Live hosted instance
+
+| What | URL |
+|---|---|
+| **App (SPA + API + worker)** | https://reachinbox-email-scheduler-dw9n.onrender.com |
+| **Live BullMQ queue dashboard** | https://reachinbox-email-scheduler-dw9n.onrender.com/admin/queues |
+| **Health check** | https://reachinbox-email-scheduler-dw9n.onrender.com/api/health |
+
+> Free-tier instance — it sleeps after ~15 min idle, so the **first load can take ~30–50s**; refresh once.
+> Demo login = one click (no external credentials needed). Google/Slack OAuth are configured for this same URL.
+
 ---
 
 ## ⚡ Quickstart for reviewers (5 minutes)
