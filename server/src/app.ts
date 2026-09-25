@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'node:path';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { createBullBoard } from '@bull-board/api';
@@ -42,6 +43,13 @@ app.use('/api/auth', authRouter);
 app.use('/api/emails', emailsRouter);
 app.use('/api/senders', sendersRouter);
 app.use('/api/slack', slackRouter);
+
+// ── Production: serve the built React SPA from the same origin ──
+if (env.NODE_ENV === 'production') {
+  const staticDir = path.join(__dirname, '../../web/dist');
+  app.use(express.static(staticDir, { index: false }));
+  app.get(/^\/(?!api|admin).*/, (_req, res) => res.sendFile(path.join(staticDir, 'index.html')));
+}
 
 // 404 + error handler
 app.use((_req, res) => {

@@ -42,6 +42,42 @@ Then open **<http://localhost:5173>** → **Demo Login** → you're in.
 
 ---
 
+## 🌐 Hosted deployment (Render — free tier)
+
+One web service runs the **API + BullMQ worker + built React SPA** on the same origin
+(`render.yaml` at the repo root deploys it from this repo — no code changes needed).
+
+**Architecture (all free tiers):**
+
+| Piece | Provider | What it is |
+|---|---|---|
+| **Web service** | Render | `render.yaml` blueprint; runs API + worker (worker starts in-process) |
+| **PostgreSQL** | Neon | Free serverless Postgres (14GB) — copy its *connection string* |
+| **Redis** | Upstash | Free Redis (TLS) — copy its `REDIS_URL` |
+| **Elasticsearch** | — (optional) | Set `ES_ENABLED=false`; search falls back to Postgres `ILIKE`. The demo video shows live ES queries from the local setup. |
+| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed |
+| **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). |
+
+**Deploy steps (≈10 min):**
+1. Push this repo to GitHub (it already is). Create free accounts: [Render](https://render.com), [Neon](https://neon.tech), [Upstash](https://upstash.com).
+2. **Neon**: new project → copy the **connection string** (`postgres://...`).
+3. **Upstash**: new Redis database → copy `REDIS_URL` (`rediss://default:...`).
+4. **Render** → *New +* → *Blueprint* → connect this repo → name it → **Create**. Render reads `render.yaml`, deploys, runs migrations automatically.
+5. In the Render service → **Environment** → fill the `sync: false` vars and save (it restarts):
+   - `DATABASE_URL` ← Neon string
+   - `REDIS_URL` ← Upstash string
+   - `JWT_SECRET` ← any long random string
+   - `FRONTEND_URL` ← `https://<your-service>.onrender.com`
+   - `GOOGLE_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/auth/google/callback`
+   - `SLACK_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/slack/callback`
+   - add `https://<your-service>.onrender.com/api/auth/google/callback` to your Google OAuth client's **Authorized redirect URIs**
+   - add `https://<your-service>.onrender.com/api/slack/callback` under **Redirect URLs** in your Slack app (api.slack.com → OAuth) and **Save URLs**
+6. That's it — open the link, click **Demo Login**, and the whole stack (queue dashboard at `/admin/queues`, scheduling, Ethereal + Slack live calls) works.
+
+> Harden it later: replace the demo login with your Google OAuth, tighten `MAX_EMAILS_PER_HOUR_*`, add a paid Postgres/Redis tier. For a student assessment the free stack above is enough and the assignment is fully verifiable through the live link.
+
+---
+
 ## ✨ Features
 
 ### Backend
