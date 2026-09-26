@@ -64,6 +64,7 @@ export interface SlackStatus {
   configured: boolean;
   team?: string | null;
   channelId?: string | null;
+  teamDomain?: string | null;
 }
 
 export interface SlackAlert {

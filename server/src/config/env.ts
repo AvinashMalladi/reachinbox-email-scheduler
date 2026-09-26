@@ -29,6 +29,10 @@ const envSchema = z.object({
   SLACK_CLIENT_ID: z.string().optional(),
   SLACK_CLIENT_SECRET: z.string().optional(),
   SLACK_REDIRECT_URI: z.string().default('http://localhost:4000/api/slack/callback'),
+  // Workspace the "Connect Slack" flow installs into — deep-links the OAuth
+  // authorize URL to <team-domain>.slack.com so users skip Slack's
+  // "enter your workspace URL" screen entirely.
+  SLACK_TEAM_DOMAIN: z.string().optional(),
 
   ETHEREAL_USER: z.string().optional(),
   ETHEREAL_PASSWORD: z.string().optional(),

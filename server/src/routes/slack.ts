@@ -15,6 +15,14 @@ const wrap = (fn: AsyncHandler) => (req: Request, res: Response, next: NextFunct
 
 const SLACK_AUTHORIZE_URL = 'https://slack.com/oauth/v2/authorize';
 
+function slackAuthorizeUrl(): string {
+  // Deep-link into a specific workspace when configured so reviewers never see
+  // Slack's "find your workspace / enter workspace URL" screen.
+  return env.SLACK_TEAM_DOMAIN
+    ? `https://${env.SLACK_TEAM_DOMAIN}.slack.com/oauth/v2/authorize`
+    : SLACK_AUTHORIZE_URL;
+}
+
 function isSlackConfigured(): boolean {
   return Boolean(env.SLACK_CLIENT_ID && env.SLACK_CLIENT_SECRET);
 }
@@ -33,7 +41,7 @@ router.get(
       redirect_uri: env.SLACK_REDIRECT_URI,
       state,
     });
-    return res.redirect(`${SLACK_AUTHORIZE_URL}?${params.toString()}`);
+    return res.redirect(`${slackAuthorizeUrl()}?${params.toString()}`);
   }),
 );
 
@@ -88,14 +96,16 @@ router.get(
   '/status',
   wrap(async (req, res) => {
     const conn = await getSlackConnection(req.user!.id);
+    const teamDomain = env.SLACK_TEAM_DOMAIN ?? null;
     if (!conn) {
-      return res.json({ connected: false, configured: isSlackConfigured() });
+      return res.json({ connected: false, configured: isSlackConfigured(), teamDomain });
     }
     return res.json({
       connected: true,
       configured: isSlackConfigured(),
       team: conn.team_name ?? conn.team_id,
       channelId: conn.channel_id,
+      teamDomain,
     });
   }),
 );

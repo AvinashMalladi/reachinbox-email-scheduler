@@ -155,9 +155,19 @@ export function Header({ user, onLogout }: { user: AuthUser; onLogout: () => voi
                 </p>
                 <ol className="mt-3 space-y-2 text-sm text-slate-600">
                   <li>
-                    <span className="font-semibold text-slate-800">1.</span> Slack will ask you to sign in and pick the
-                    workspace to install the app into. If you don't see it listed, it may ask for the workspace's URL —
-                    that's Slack's own screen, and typing your workspace URL is expected.
+                    <span className="font-semibold text-slate-800">1.</span>{' '}
+                    {slack?.teamDomain ? (
+                      <>
+                        Slack will ask you to sign in to{' '}
+                        <span className="font-semibold text-slate-800">{slack.teamDomain}.slack.com</span> — that
+                        workspace is already pre-selected, so there's no workspace-URL step.
+                      </>
+                    ) : (
+                      <>
+                        Slack will ask you to sign in and pick the workspace to install the app into. If it asks for a
+                        workspace URL, that's Slack's own screen — typing it is expected.
+                      </>
+                    )}
                   </li>
                   <li>
                     <span className="font-semibold text-slate-800">2.</span> Review the permissions and{' '}
