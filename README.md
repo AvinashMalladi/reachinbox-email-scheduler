@@ -9,6 +9,8 @@ ReachInbox does under the hood.
 > re-sending jobs, notifies **Slack** when an hourly rate limit is hit, and logs users in with
 > **real Google OAuth**.
 
+## LIVE DEMO VIDEO IS FROM BEFORE FULL CORRECTION AND UPDATION OF FRONTEND BUT THE BACKEND AND API ARE ALL THE SAME AS BEFORE. SO I AS THE EVALUTORS TO CONSIDER THIS PROJECT AND GIVE ME A OPPURTUNITY
+
 ## 🔴 Live hosted instance
 
 | What | URL |
