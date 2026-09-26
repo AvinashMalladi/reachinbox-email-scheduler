@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { knex } from '../db/knex';
 import { redis } from '../lib/redis';
 import { env } from '../config/env';
+import * as oauthRelay from './oauthRelay';
 import type { UserRow } from '../types/db';
 
 export const AUTH_COOKIE = 'ri_token';
@@ -21,6 +22,8 @@ export type GoogleProfile = {
   family_name?: string;
 };
 
+const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback';
+
 export const googleService = {
   demoLoginEnabled: env.ENABLE_DEMO_LOGIN,
 
@@ -30,20 +33,36 @@ export const googleService = {
 
   async createOAuthState(redirect: string): Promise<string> {
     const state = randomBytes(24).toString('hex');
-    await redis.set(`oauth:state:${state}`, redirect, 'EX', 600);
+    await redis.set(`oauth:state:${state}`, JSON.stringify({ redirect, relay: await oauthRelay.isPeer() }), 'EX', 600);
     return state;
   },
 
-  async consumeOAuthState(state: string): Promise<string | null> {
-    const redirect = await redis.get(`oauth:state:${state}`);
-    if (redirect) await redis.del(`oauth:state:${state}`);
-    return redirect;
+  async peekOAuthState(state: string): Promise<{ redirect: string; relay: boolean } | null> {
+    const raw = await redis.get(`oauth:state:${state}`);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as { redirect?: string; relay?: boolean };
+      return { redirect: parsed.redirect ?? '/dashboard', relay: parsed.relay === true };
+    } catch {
+      return { redirect: raw, relay: false };
+    }
   },
 
-  buildGoogleAuthUrl(state: string): string {
+  async consumeOAuthState(state: string): Promise<string | null> {
+    const meta = await this.peekOAuthState(state);
+    if (!meta) return null;
+    await redis.del(`oauth:state:${state}`);
+    return meta.redirect;
+  },
+
+  async buildGoogleAuthUrl(state: string): Promise<string> {
+    // On the peer host the redirect_uri sent to Google must be the anchor's
+    // registered URI (Google only matches against registered values).
+    const redirectUri =
+      (await oauthRelay.isPeer()) ? await oauthRelay.registeredCallback(GOOGLE_CALLBACK_PATH) : env.GOOGLE_REDIRECT_URI;
     const params = new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID!,
-      redirect_uri: env.GOOGLE_REDIRECT_URI,
+      redirect_uri: redirectUri,
       response_type: 'code',
       scope: 'openid email profile',
       access_type: 'online',
@@ -54,6 +73,8 @@ export const googleService = {
   },
 
   async exchangeGoogleCode(code: string): Promise<GoogleProfile> {
+    const redirectUri =
+      (await oauthRelay.isPeer()) ? await oauthRelay.registeredCallback(GOOGLE_CALLBACK_PATH) : env.GOOGLE_REDIRECT_URI;
     const tokenRes = await fetch(GOOGLE_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -61,7 +82,7 @@ export const googleService = {
         code,
         client_id: env.GOOGLE_CLIENT_ID!,
         client_secret: env.GOOGLE_CLIENT_SECRET!,
-        redirect_uri: env.GOOGLE_REDIRECT_URI,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     });

@@ -6,6 +6,7 @@ import { ensureEtherealSenders } from './services/senders';
 import { probeEthereal } from './services/emailSender';
 import { initSearch } from './services/search';
 import { recoverPendingJobs } from './services/recovery';
+import * as oauthRelay from './services/oauthRelay';
 import { startWorker } from './queue/worker';
 
 /**
@@ -18,6 +19,13 @@ import { startWorker } from './queue/worker';
 async function bootstrap() {
   await knex.raw('select 1');
   await redis.ping();
+
+  // Advertise the OAuth relay topology (registered + peer origins) so instances
+  // without OAUTH_REGISTERED_ORIGIN/OAUTH_PEER_ORIGIN env (e.g. the anchor host)
+  // learn it from shared Redis.
+  if (await oauthRelay.publishRelayConfig()) {
+    console.log('[boot] OAuth relay config published to shared Redis');
+  }
 
   app.listen(env.PORT, () => {
     console.log(`[boot] API listening on http://localhost:${env.PORT}`);

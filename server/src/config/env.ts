@@ -34,6 +34,16 @@ const envSchema = z.object({
   // "enter your workspace URL" screen entirely.
   SLACK_TEAM_DOMAIN: z.string().optional(),
 
+  // Cross-deployment OAuth relay. Google OAuth clients and Slack apps only
+  // allow an exact redirect-URI match, so a single origin ("registered anchor")
+  // holds the URIs actually registered in the consoles. When a second origin
+  // ("peer") exists on a different host, that host starts its login through the
+  // anchor's callback and the anchor transparently forwards the code+state to
+  // the peer so the peer can complete the exchange and set its own cookie.
+  // Leave both unset (or unset one) for the default single-origin flow.
+  OAUTH_REGISTERED_ORIGIN: z.string().optional(),
+  OAUTH_PEER_ORIGIN: z.string().optional(),
+
   ETHEREAL_USER: z.string().optional(),
   ETHEREAL_PASSWORD: z.string().optional(),
   ETHEREAL_SENDERS: z.string().optional(),

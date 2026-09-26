@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { env } from '../config/env';
 import { googleService, AUTH_COOKIE } from '../services/auth';
+import * as oauthRelay from '../services/oauthRelay';
 
 const router = Router();
 const COOKIE_MAX_AGE = 7 * 24 * 3600 * 1000;
@@ -22,7 +23,7 @@ router.get(
     }
     const redirect = typeof req.query.redirect === 'string' ? req.query.redirect : '/dashboard';
     const state = await googleService.createOAuthState(redirect);
-    return res.redirect(googleService.buildGoogleAuthUrl(state));
+    return res.redirect(await googleService.buildGoogleAuthUrl(state));
   }),
 );
 
@@ -32,6 +33,14 @@ router.get(
     const code = typeof req.query.code === 'string' ? req.query.code : null;
     const state = typeof req.query.state === 'string' ? req.query.state : null;
     if (!code || !state) return res.status(400).send('Missing OAuth code or state');
+
+    // Google only ever redirects to the anchor's registered callback URI. If the
+    // login was initiated on the peer host, forward the code+state verbatim so
+    // the peer can complete the exchange and set its own cookie.
+    const meta = await googleService.peekOAuthState(state);
+    if (meta?.relay && (await oauthRelay.isAnchor())) {
+      return res.redirect(`${await oauthRelay.peerCallback('/api/auth/google/callback')}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`);
+    }
 
     const redirect = (await googleService.consumeOAuthState(state)) ?? '/dashboard';
     const profile = await googleService.exchangeGoogleCode(code);
