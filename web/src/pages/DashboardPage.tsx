@@ -261,7 +261,7 @@ export function DashboardPage() {
             </div>
             <Button
               onClick={() => setComposeOpen(true)}
-              className="bg-white text-blue-700 shadow-md hover:bg-blue-50"
+              className="bg-brand-700 shadow-md ring-1 ring-white/40 hover:bg-brand-800"
             >
               <PenSquare className="h-4 w-4" />
               Compose New Email
