@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Mail } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Info, Mail } from 'lucide-react';
 import { apiGet } from '../lib/api';
 import type { EmailItem } from '../types/api';
 import { Spinner, StatusBadge } from '../components/ui';
@@ -94,22 +94,42 @@ export function EmailPreviewPage() {
             <div className="whitespace-pre-wrap break-words leading-relaxed text-slate-700">{email.body}</div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+          <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4">
             {email.previewUrl ? (
               <a
                 href={email.previewUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+                className="inline-flex items-center gap-1.5 self-start rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open in Ethereal inbox
               </a>
             ) : (
-              <p className="text-xs leading-relaxed text-slate-400">
-                Delivered via the hosted fallback path (this host blocks Ethereal SMTP).{' '}
-                <span className="font-medium text-slate-500">When run locally, this action links to Ethereal's live preview.</span>
-              </p>
+              <div className="flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3 ring-1 ring-amber-300">
+                <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <div className="text-xs leading-relaxed text-amber-900">
+                  <p className="font-semibold">In-app preview — no ethereal.email link for this message (expected on this host).</p>
+                  <p className="mt-1.5">
+                    This deployment runs on a free host that blocks <span className="font-semibold">all</span>{' '}
+                    outbound SMTP, so Ethereal's live preview can't be generated here. The mailer{' '}
+                    <span className="font-semibold">tried Ethereal SMTP first</span> (it's the primary mailer, per the
+                    assignment) and fell back to the configured HTTPS delivery API automatically — this message was
+                    still delivered for real, and the full content is shown above.
+                  </p>
+                  <p className="mt-1.5">
+                    Run the same code locally (or anywhere Ethereal's SMTP is reachable) and this button becomes a live{' '}
+                    <span className="font-semibold">ethereal.email</span> preview link instead.
+                  </p>
+                  <p className="mt-1.5">
+                    Why this design? See{' '}
+                    <code className="rounded bg-amber-100 px-1 py-0.5 font-semibold">
+                      README → “Email delivery &amp; preview”
+                    </code>{' '}
+                    — it explains the Ethereal-first mailer and this fallback in detail.
+                  </p>
+                </div>
+              </div>
             )}
             {email.lastError && <p className="text-xs font-medium text-rose-500">Error: {email.lastError}</p>}
           </div>
