@@ -63,8 +63,8 @@ export function EmailPreviewPage() {
       </div>
 
       <main className="mx-auto max-w-4xl px-4 pb-10 sm:px-6">
-        <div className="overflow-hidden rounded-2xl bg-white shadow-modal ring-1 ring-slate-200">
-          <div className="border-b border-slate-100 px-6 py-5">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-modal ring-1 ring-slate-300">
+          <div className="border-b-2 border-slate-300 px-6 py-5">
             <div className="flex items-start justify-between gap-4">
               <h1 className="text-xl font-bold text-slate-800">{email.subject || '(no subject)'}</h1>
               <StatusBadge status={email.status} />
@@ -94,7 +94,7 @@ export function EmailPreviewPage() {
             <div className="whitespace-pre-wrap break-words leading-relaxed text-slate-700">{email.body}</div>
           </div>
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-4">
+          <div className="flex flex-col gap-3 border-t-2 border-slate-300 px-6 py-4">
             {email.previewUrl ? (
               <a
                 href={email.previewUrl}
