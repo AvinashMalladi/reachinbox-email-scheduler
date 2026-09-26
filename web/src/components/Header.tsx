@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LogOut, Slack, X } from 'lucide-react';
+import { LogOut, Slack, Workflow, X } from 'lucide-react';
 import type { AuthUser, SlackStatus, SlackAlert } from '../types/api';
 import { apiGet } from '../lib/api';
 import { Button } from './ui';
@@ -56,29 +56,40 @@ export function Header({ user, onLogout }: { user: AuthUser; onLogout: () => voi
         </div>
       )}
 
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+      <header className="sticky top-0 z-40 bg-gradient-to-r from-blue-800 via-blue-700 to-blue-600 text-white shadow-lg">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 text-sm font-bold text-white ring-1 ring-white/25">
               RI
             </div>
             <div className="leading-tight">
-              <p className="text-sm font-semibold text-slate-800">ReachInbox</p>
-              <p className="text-xs text-slate-500">Email Scheduler</p>
+              <p className="text-sm font-semibold text-white">ReachInbox</p>
+              <p className="text-xs text-blue-100/90">Email Scheduler</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            <a
+              href="/admin/queues"
+              target="_blank"
+              rel="noreferrer"
+              className="hidden items-center gap-2 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white ring-1 ring-white/20 transition-colors hover:bg-white/20 sm:inline-flex"
+              title="Open the live BullMQ queue dashboard in a new tab"
+            >
+              <Workflow className="h-4 w-4" />
+              Queue monitor
+            </a>
+
             {slack && (
               <button
                 onClick={() => setShowSlackModal(true)}
                 className={
                   'hidden items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors sm:inline-flex ' +
                   (slack.connected
-                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
+                    ? 'bg-emerald-400/20 text-emerald-100 ring-emerald-200/30 hover:bg-emerald-400/30'
                     : slack.configured
-                      ? 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50'
-                      : 'bg-slate-50 text-slate-400 ring-slate-200 cursor-not-allowed')
+                      ? 'bg-white/10 text-white ring-white/20 hover:bg-white/20'
+                      : 'bg-white/5 text-blue-100/60 ring-white/10 cursor-not-allowed')
                 }
                 title={
                   slack.connected
@@ -94,24 +105,30 @@ export function Header({ user, onLogout }: { user: AuthUser; onLogout: () => voi
             )}
 
             <div className="hidden text-right leading-tight sm:block">
-              <p className="text-sm font-medium text-slate-800">{user.name ?? 'User'}</p>
-              <p className="text-xs text-slate-500">{user.email}</p>
+              <p className="text-sm font-medium text-white">{user.name ?? 'User'}</p>
+              <p className="text-xs text-blue-100/90">{user.email}</p>
             </div>
 
             {user.avatar ? (
               <img
                 src={user.avatar}
                 alt={user.name ?? user.email}
-                className="h-9 w-9 rounded-full ring-1 ring-slate-200"
+                className="h-9 w-9 rounded-full ring-1 ring-white/30"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-xs font-semibold text-white ring-1 ring-white/25">
                 {initials || 'U'}
               </div>
             )}
 
-            <Button variant="ghost" onClick={onLogout} className="px-2" aria-label="Logout" title="Logout">
+            <Button
+              variant="ghost"
+              onClick={onLogout}
+              className="px-2 text-blue-50 hover:bg-white/10 hover:text-white"
+              aria-label="Logout"
+              title="Logout"
+            >
               <LogOut className="h-4 w-4" />
               <span className="hidden sm:inline">Logout</span>
             </Button>

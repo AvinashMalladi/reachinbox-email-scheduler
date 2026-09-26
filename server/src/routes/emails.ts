@@ -120,6 +120,43 @@ router.get(
   }),
 );
 
+// GET /api/emails/stats → per-status counts + sender count for the current user,
+// powering the Operations Center stat cards on the dashboard.
+router.get(
+  '/stats',
+  wrap(async (req, res) => {
+    const rows = (await knex('email_jobs')
+      .select('status')
+      .where({ user_id: req.user!.id })
+      .groupBy('status')
+      .count<Array<{ status: string; count: string }>>('* as count')) as Array<{ status: string; count: string | number }>;
+
+    const byStatus: Record<string, number> = {};
+    for (const row of rows) byStatus[row.status] = Number(row.count);
+
+    const senders = await knex('senders').where({ user_id: req.user!.id }).count<Array<{ count: string }>>('* as count');
+    const senderCount = Number(senders[0].count);
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const sentToday = await knex('email_jobs')
+      .where({ user_id: req.user!.id, status: 'sent' })
+      .andWhere('sent_at', '>=', todayStart.toISOString())
+      .count<Array<{ count: string }>>('* as count');
+
+    res.json({
+      scheduled: byStatus.scheduled ?? 0,
+      sending: byStatus.sending ?? 0,
+      sent: byStatus.sent ?? 0,
+      failed: byStatus.failed ?? 0,
+      cancelled: byStatus.cancelled ?? 0,
+      total: Object.values(byStatus).reduce((a, b) => a + b, 0),
+      senders: senderCount,
+      sentToday: Number(sentToday[0].count),
+    });
+  }),
+);
+
 router.get(
   '/:id',
   wrap(async (req, res) => {

@@ -36,6 +36,10 @@ const MAPPINGS: MappingTypeMapping = {
   },
 };
 
+export function searchHealth(): { enabled: boolean; reachable: boolean; index: string } {
+  return { enabled: env.ES_ENABLED, reachable: env.ES_ENABLED && available, index: INDEX };
+}
+
 export async function initSearch(): Promise<void> {
   if (!env.ES_ENABLED) {
     console.warn('[search] search disabled via ES_ENABLED=false');

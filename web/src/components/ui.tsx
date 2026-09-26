@@ -150,6 +150,36 @@ export function EmptyState({
   );
 }
 
+/* ── Card / panel ─────────────────────────────────────── */
+export function Card({
+  title,
+  icon,
+  badge,
+  className = '',
+  children,
+}: {
+  title?: ReactNode;
+  icon?: ReactNode;
+  badge?: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={'rounded-2xl bg-white p-5 ring-1 ring-slate-200/80 shadow-card ' + className}>
+      {(title || badge) && (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            {icon}
+            {title}
+          </h3>
+          {badge}
+        </div>
+      )}
+      {children}
+    </section>
+  );
+}
+
 /* ── Modal ───────────────────────────────────────────── */
 export function Modal({
   open,

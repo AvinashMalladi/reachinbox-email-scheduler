@@ -42,6 +42,30 @@ export function probeEthereal(host: string, port: number): Promise<boolean> {
   return probePromise;
 }
 
+/** Read-only view of the delivery pipeline for the Operations Center. */
+export function getMailerStatus(): {
+  mode: 'ethereal' | 'brevo-fallback' | 'smtp-relay' | 'unconfigured';
+  etherealProbed: boolean;
+  etherealReachable: boolean | null;
+  hasBrevoFallback: boolean;
+  hasSmtpRelay: boolean;
+  etherealPort: number;
+} {
+  const mode = env.ETHEREAL_USER && env.ETHEREAL_PASSWORD
+    ? (etherealReachable === false && env.BREVO_API_KEY ? 'brevo-fallback' : 'ethereal')
+    : env.SMTP_HOST
+      ? 'smtp-relay'
+      : 'unconfigured';
+  return {
+    mode,
+    etherealProbed: etherealReachable !== null || probePromise !== null,
+    etherealReachable,
+    hasBrevoFallback: Boolean(env.BREVO_API_KEY),
+    hasSmtpRelay: Boolean(env.SMTP_HOST),
+    etherealPort: env.ETHEREAL_SMTP_PORT,
+  };
+}
+
 function renderHtml(body: string): string {
   return body
     .split('\n')

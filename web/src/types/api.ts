@@ -81,3 +81,46 @@ export interface AuthConfig {
   googleConfigured: boolean;
   demoLogin: boolean;
 }
+
+export interface EmailStats {
+  scheduled: number;
+  sending: number;
+  sent: number;
+  failed: number;
+  cancelled: number;
+  total: number;
+  senders: number;
+  sentToday: number;
+}
+
+export type MailerMode = 'ethereal' | 'brevo-fallback' | 'smtp-relay' | 'unconfigured';
+
+export interface SystemStatus {
+  queues: {
+    waiting: number;
+    active: number;
+    delayed: number;
+    completed: number;
+    failed: number;
+    paused: number;
+  } | null;
+  mailer: {
+    mode: MailerMode;
+    etherealProbed: boolean;
+    etherealReachable: boolean | null;
+    hasBrevoFallback: boolean;
+    hasSmtpRelay: boolean;
+    etherealPort: number;
+  };
+  elasticsearch: {
+    enabled: boolean;
+    reachable: boolean;
+    index: string;
+  };
+  slack: {
+    configured: boolean;
+    connected: boolean;
+  };
+  senders: number;
+  adminUrl: string;
+}

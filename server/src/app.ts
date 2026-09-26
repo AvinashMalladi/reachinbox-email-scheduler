@@ -12,6 +12,7 @@ import authRouter from './routes/auth';
 import emailsRouter from './routes/emails';
 import sendersRouter from './routes/senders';
 import slackRouter from './routes/slack';
+import systemRouter from './routes/system';
 
 export const app = express();
 
@@ -43,6 +44,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/emails', emailsRouter);
 app.use('/api/senders', sendersRouter);
 app.use('/api/slack', slackRouter);
+app.use('/api/system', systemRouter);
 
 // ── Production: serve the built React SPA from the same origin ──
 if (env.NODE_ENV === 'production') {

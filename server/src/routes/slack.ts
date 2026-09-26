@@ -18,7 +18,7 @@ const SLACK_CALLBACK_PATH = '/api/slack/callback';
 
 // Prefix used to mark states created on the peer host so the anchor can tell it
 // should relay the callback instead of processing it as its own login.
-const RELAY_STATE_PREFIX = 'rw:';
+const RELAY_STATE_PREFIX = 'rw';
 
 function slackAuthorizeUrl(): string {
   // Deep-link into a specific workspace when configured so reviewers never see
@@ -113,7 +113,7 @@ router.get(
     if (!isSlackConfigured()) {
       return res.status(503).json({ error: 'Slack not configured (SLACK_CLIENT_ID/SECRET missing)' });
     }
-    const state = `${(await oauthRelay.isPeer()) ? RELAY_STATE_PREFIX : ''}${req.user!.id}:${Buffer.from((req.query.redirect as string) ?? '/dashboard').toString('base64url')}`;
+    const state = `${(await oauthRelay.isPeer()) ? `${RELAY_STATE_PREFIX}:` : ''}${req.user!.id}:${Buffer.from((req.query.redirect as string) ?? '/dashboard').toString('base64url')}`;
     const params = new URLSearchParams({
       client_id: env.SLACK_CLIENT_ID!,
       scope: 'chat:write,channels:read',
