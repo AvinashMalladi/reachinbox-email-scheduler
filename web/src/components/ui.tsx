@@ -6,7 +6,7 @@ type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const buttonStyles: Record<ButtonVariant, string> = {
   primary:
-    'bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600 shadow-sm',
+    'bg-brand-600 text-white hover:bg-brand-700 focus-visible:outline-brand-600 shadow-sm disabled:bg-brand-300 disabled:opacity-100',
   secondary:
     'bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50',
   danger: 'bg-rose-600 text-white hover:bg-rose-700',
@@ -187,12 +187,14 @@ export function Modal({
   title,
   children,
   wide = false,
+  accent = false,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
+  accent?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -208,14 +210,24 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-16 backdrop-blur-sm">
       <div
-        className="w-full rounded-2xl bg-white shadow-modal ring-1 ring-slate-200"
+        className="w-full overflow-hidden rounded-2xl bg-white shadow-modal ring-1 ring-slate-200"
         style={{ maxWidth: wide ? '720px' : '520px' }}
       >
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+        <div
+          className={
+            'flex items-center justify-between px-6 py-4 ' +
+            (accent
+              ? 'bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white'
+              : 'border-b border-slate-100')
+          }
+        >
+          <h2 className="text-base font-semibold">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+            className={
+              'rounded-lg p-1.5 transition-colors ' +
+              (accent ? 'text-blue-100 hover:bg-white/15 hover:text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600')
+            }
             aria-label="Close"
           >
             <X className="h-5 w-5" />

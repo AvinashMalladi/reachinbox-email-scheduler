@@ -119,7 +119,7 @@ export function ComposeModal({ open, onClose, onScheduled }: Props) {
   };
 
   return (
-    <Modal open={open} onClose={close} title="Compose New Email" wide>
+    <Modal open={open} onClose={close} title="Compose New Email" wide accent>
       <div className="space-y-4">
         <Field label="Subject">
           <Input
@@ -231,7 +231,7 @@ export function ComposeModal({ open, onClose, onScheduled }: Props) {
           <Button variant="secondary" onClick={close} disabled={submitting}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={!canSubmit} loading={submitting}>
+          <Button onClick={submit} disabled={!canSubmit} loading={submitting} className="shadow-glow">
             Schedule
           </Button>
         </div>
