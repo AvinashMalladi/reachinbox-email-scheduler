@@ -67,8 +67,8 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 | **Redis** | Upstash | Free Redis (TLS) — copy its `REDIS_URL` |
 | **Elasticsearch** | — (optional) | Set `ES_ENABLED=false`; search falls back to Postgres `ILIKE`. The demo video shows live ES queries from the local setup. |
 | **Ethereal SMTP** | ethereal.email | **Primary mailer (as the spec requires).** Senders auto-provisioned at boot — no secrets needed. Every Ethereal-sent row gets an **Ethereal preview URL** + an in-app preview. |
-| **Delivery on hosted** | Ethereal SMTP → auto-fallback to Brevo REST | The mailer probes Ethereal's SMTP once at boot. Render free tier's egress blocks **all** outbound connections (587/465/2525), so the probe fails there and delivery automatically falls back to Brevo's HTTPS API (port 443). Optional `BREVO_API_KEY` (master key `xkeysib-…`, Brevo → Settings → SMTP & API → API Keys) + `EMAIL_FALLBACK_FROM` (a verified sender address) make hosted delivery real; locally it stays pure Ethereal with preview links. |
-| **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). |
+| **Delivery on hosted** | Ethereal SMTP → auto-fallback to Brevo REST | Senders are provisioned as genuine Ethereal accounts (auto-created at boot — no secrets needed). The mailer probes **Ethereal's SMTP** once at boot; Render free tier's egress blocks *all outbound SMTP* (587/465/2525) so the probe fails there and delivery automatically falls back to **Brevo's HTTPS API** (port 443). Optional `BREVO_API_KEY` (master key `xkeysib-…`, Brevo → Settings → SMTP & API → API Keys) + `EMAIL_FALLBACK_FROM` (a verified sender address) make hosted delivery real; locally it stays pure Ethereal with preview links. (Alternative: `SMTP_HOST` + `SMTP_USER`/`SMTP_PASSWORD` provision real-relay sender rows instead of Ethereal.) |
+| **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). Set `SLACK_TEAM_DOMAIN` to make the Slack connect flow land directly on that workspace — new users never type a workspace URL. |
 
 **Deploy steps (≈10 min):**
 1. Push this repo to GitHub (it already is). Create free accounts: [Render](https://render.com), [Neon](https://neon.tech), [Upstash](https://upstash.com).
@@ -102,7 +102,7 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 | **Concurrency** | Worker `concurrency` is configurable (`WORKER_CONCURRENCY`, default 5). Multiple workers/instances are safe because rate counters live in Redis. |
 | **Delay between emails** | BullMQ worker **limiter `{ max: 1, duration: MIN_DELAY_BETWEEN_SENDS_MS }`** (default 2000 ms) — at most one send starts per window **across all workers**. Plus the UI-set `delayBetweenMs` paces each batch. |
 | **Hourly rate limit** | Redis counters keyed `rl:sender:{senderId}:{hourWindow}` and `rl:global:{hourWindow}`. Configurable via env (`MAX_EMAILS_PER_HOUR_PER_SENDER`, `MAX_EMAILS_PER_HOUR_GLOBAL`) and per-batch via `hourlyLimit`. When hit, jobs are **delayed into the next hour window** — never dropped, never failed. |
-| **Slack notifications** | Real **"Connect Slack" OAuth flow** (scope `chat:write,channels:read`). The moment a sender hits its hourly limit we call `chat.postMessage` (exactly one message per sender+hour). No connection → no crash, just a skip; connecting later starts notifications automatically. |
+| **Slack notifications** | Real **"Connect Slack"** OAuth flow (scopes `chat:write,channels:read`), optionally deep-linked to a workspace via `SLACK_TEAM_DOMAIN`. The moment a sender hits its hourly limit we call `chat.postMessage` (exactly one message per sender+hour). Every alert is also persisted to `slack_alerts` and surfaced via an in-app banner even if Slack isn't connected — connect later and alerts resume with no redeploy. |
 | **Search** | Emails are indexed into Elasticsearch (`reachinbox-emails`) on create and status changes. `GET /api/emails/search?q=` searches recipient/subject/body; **falls back to SQL `ILIKE`** if ES is down. |
 | **Live queue dashboard** | Bull Board mounted at **<http://localhost:4000/admin/queues>** (behind the same login cookie). |
 | **Auth** | Real **Google OAuth** code flow → JWTs in a httpOnly cookie. Dev-only demo login behind `ENABLE_DEMO_LOGIN=true`. |
@@ -114,6 +114,7 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 - **Dashboard**: tabs for **Scheduled Emails** / **Sent Emails**
 - **Compose New Email** modal: subject, body, **CSV/TXT upload** (live count of detected emails + skipped invalid rows), start time, delay between emails, hourly limit
 - Tables with **loading skeletons**, **empty states**, per-status badges, Ethereal **preview links**, **retry** / **cancel** actions
+- **Email preview page** at `/emails/:id` (**Actions → preview**): Ethereal-style message viewer with an **Open in Ethereal inbox** button (when a `preview_url` exists) or a highlighted explanation banner (when the fallback path delivered)
 - **Live search** (debounced) powered by the Elasticsearch endpoint
 - 5 s auto-refresh, toasts, clean reusable UI kit + TypeScript types everywhere
 
@@ -139,8 +140,8 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
                               │                                  │
                               │         ┌────────────worker───────┤
                               ▼         ▼                        ▼
-                       Elasticsearch   Worker:  guard → rate check → nodemailer
-                       (index/search)  (concurrency,  limiter)  → Ethereum SMTP
+Elasticsearch   Worker:  guard → rate check → nodemailer
+                        (index/search)  (concurrency,  limiter)  → sender SMTP (Ethereal)
                                                               (status → sent/failed)
 ```
 
@@ -153,8 +154,9 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
      it `DECR`s back and moves the job to the **next hour window** with `job.moveToDelayed()` + sends a
      single **Slack** alert. Order is preserved (they land at the next window boundary and are picked
      up FIFO, still paced by the limiter).
-   - **Send**: marks `sending`, calls nodemailer → Ethereal SMTP, then `sent`/`failed` (+ preview URL,
-     messageId) and mirrors status into Elasticsearch.
+- **Send**: marks `sending`, calls nodemailer → the sender's SMTP host (Ethereal by default; a
+      real relay when `SMTP_HOST` is configured) → status becomes `sent`/`failed` (+ preview URL,
+      messageId) and mirrors status into Elasticsearch.
 
 **Why restarts are safe**
 - Delayed jobs live in Redis (BullMQ persistence).
@@ -244,46 +246,60 @@ npm run dev                 # <http://localhost:5173> (web app)
 > local grading/tests; leave `false` in production).
 
 ### Slack notifications (real)
-1. Create an app at `https://api.slack.com/apps` → add scopes **`chat:write`** and **`channels:read`**
-   → install to a workspace → under OAuth settings set redirect URL
-   `http://localhost:4000/api/slack/callback`.
+1. Create an app at `https://api.slack.com/apps` → add bot scopes **`chat:write`** and **`channels:read`**
+   → install to a workspace → under **OAuth & Permissions** set the redirect URL
+   `http://localhost:4000/api/slack/callback` (and Save URLs).
 2. Set in `server/.env`:
    ```
    SLACK_CLIENT_ID=...
    SLACK_CLIENT_SECRET=...
    SLACK_REDIRECT_URI=http://localhost:4000/api/slack/callback
+   # Optional — deep-link the connect flow so users skip Slack's "enter workspace URL" screen:
+   SLACK_TEAM_DOMAIN=reachinbox-x8j2771
    ```
-3. Click **Connect Slack** in the dashboard header → authorize → done.
+   When `SLACK_TEAM_DOMAIN` is set, **Connect Slack** redirects to
+   `https://<team-domain>.slack.com/oauth/v2/authorize` instead of `slack.com/oauth/v2/authorize`, so new
+   users go straight to signing in — the workspace is pre-selected, no URL typing.
+3. Click **Connect Slack** in the dashboard header → you land on that workspace's sign-in → authorize →
+   done. Every sender is provisioned to the workspace, so all users share one connection.
 4. Schedule a batch with a low `hourlyLimit` (e.g. 3 for 8 emails): when the limit is hit the workspace
    receives a message. If Slack isn't connected, hits are simply silent (and start working once you
-   connect — no redeploy).
+   connect — no redeploy). Connection state is persisted per user, and every alert is also stored in the
+   `slack_alerts` table (visible at `GET /api/slack/alerts` + an in-app banner) regardless of Slack
+   delivery.
 
 ### Ethereal Email
 - **Recommended (multi-sender):** create N throwaway accounts at `https://ethereal.email` and set
   `ETHEREAL_SENDERS=user1:pass1,user2:pass2`.
 - Or a single account via `ETHEREAL_USER` / `ETHEREAL_PASSWORD`.
 - Or nothing — the app auto-provisions accounts at boot via the Ethereal API.
-- Every sent message shows an **Ethereal preview URL** in the Sent table (and in the DB `preview_url`
-  column) so you can "read" the fake email.
+- Sender *rows* are persisted in the `senders` table and target `smtp.ethereal.email`
+  (`ETHEREAL_SMTP_PORT`, default **587**).
+- Every message sent through Ethereal shows an **Ethereal preview URL** in the Sent table (and in the DB
+  `preview_url` column) so you can "read" the fake email.
+- **Alternative sender modes** (only if you want *real* delivery instead of Ethereal): set `SMTP_HOST` /
+  `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_SECURE` to provision sender rows that send through
+  a real relay (no preview URLs), or leave everything unset and the code auto-falls back to
+  `BREVO_API_KEY` (see below) when Ethereal is unreachable.
 
 ### Email delivery & preview (why you might see an in-app preview)
 > **TL;DR:** Ethereal SMTP is the primary mailer, per the brief. On hosts that physically cannot reach
-> Ethereal's SMTP (Render free blocks *all* outbound), a documented fallback delivers the same message and
-> an unmissable in-app preview page stands in for the Ethereal link. Local runs are 100% Ethereal with live
+> SMTP (Render free blocks *all* outbound), a documented fallback delivers the same message and an
+> unmissable in-app preview page stands in for the Ethereal link. Local runs are 100% Ethereal with live
 > `ethereal.email` previews.
 
-- **Ethereal stays primary.** At boot the app probes `smtp.ethereal.email` once (`probeEthereal`,
-  memoized). Wherever it's reachable — local dev, VPS, CI — every message goes through
-  `nodemailer → Ethereal SMTP` and every Sent row gets a real `ethereal.email` preview URL
+- **Ethereal stays primary.** At boot the app probes each sender's SMTP host once (`probeEthereal`,
+  memoized, 12s connect timeout). Wherever it's reachable — local dev, VPS, CI — every message goes
+  through `nodemailer → smtp.ethereal.email` and every Sent row gets a real `ethereal.email` preview URL
   (`preview_url`), which **Actions → preview** links to.
-- **Why a fallback exists at all.** Render's free tier **blocks all outbound connections**
-  (documented Render limitation — SMTP 587/465/2525 all time out). Ethereal previews only materialize for
-  messages Ethereal itself receives over SMTP, so on that host an `ethereal.email` link is impossible no
-  matter what the code does.
-- **What the fallback is — and isn't.** It is *not* a fork: the same `sendEmail` pipeline tries Ethereal
-  first. Only when the probe fails **and** `BREVO_API_KEY` is set does it redeliver over Brevo's HTTPS API
-  (port 443 — the one outbound port free hosts leave open), using `EMAIL_FALLBACK_FROM` as a verified From.
-  Without that key, sends fail loudly with a clear "unreachable" error rather than silently degrading.
+- **Why a fallback exists at all.** Render's free tier **blocks all outbound SMTP** (documented Render
+  limitation — 587/465/2525 all time out). Ethereal previews only materialize for messages Ethereal itself
+  receives over SMTP, so on that host an `ethereal.email` link is impossible no matter what the code does.
+- **What the fallback is — and isn't.** It is *not* a fork: the exact same `sendEmail()` pipeline probes
+  SMTP first. Only when the probe fails **and** `BREVO_API_KEY` is set does it redeliver over Brevo's
+  HTTPS API (port 443 — the one outbound path free hosts leave open), using `EMAIL_FALLBACK_FROM` as a
+  verified From (falls back to the sender's own address, then name → "ReachInbox"). Without that key,
+  sends fail loudly with a clear "unreachable" error rather than silently degrading.
 - **So the evaluator never misses the preview.** The **Actions → preview** button always redirects to an
   Ethereal-style message page at `/emails/:id`. On Ethereal-reachable hosts that page shows an
   **"Open in Ethereal inbox"** button to the live message; on fallback hosts it shows a highlighted banner
@@ -300,7 +316,10 @@ npm run dev                 # <http://localhost:5173> (web app)
 | `WORKER_CONCURRENCY` | `5` | Concurrent jobs per worker |
 | `MAX_EMAILS_PER_HOUR_PER_SENDER` | `50` | Per-sender hourly cap (env-level default) |
 | `MAX_EMAILS_PER_HOUR_GLOBAL` | `200` | Global hourly cap |
-| `ETHEREAL_SENDERS` / `ETHEREAL_USER`+`_PASSWORD` / `ETHEREAL_SENDERS_COUNT` | — | Sender provisioning |
+| `ETHEREAL_SENDERS` / `ETHEREAL_USER`+`_PASSWORD` / `ETHEREAL_SENDERS_COUNT` | — | Sender provisioning (explicit list / single / auto-provision; `ETHEREAL_SMTP_PORT` default `587`) |
+| `BREVO_API_KEY` + `EMAIL_FALLBACK_FROM` | — | Fallback delivery (HTTPS) + verified From, used only when the sender's SMTP is unreachable |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASSWORD`/`SMTP_SECURE` | — | Alternative real-relay sender mode (replaces Ethereal sender rows) |
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_REDIRECT_URI` / `SLACK_TEAM_DOMAIN` | — | Slack app wiring; `SLACK_TEAM_DOMAIN` deep-links the connect flow to a workspace |
 | `ES_ENABLED` | `true` | Elasticsearch on/off (falls back to SQL search) |
 | `PORT`, `DATABASE_URL`, `REDIS_*`, `JWT_SECRET`, `FRONTEND_URL` | — | Core wiring |
 
@@ -315,10 +334,12 @@ npm run dev                 # <http://localhost:5173> (web app)
 | `POST` | http://localhost:4000/api/auth/logout · http://localhost:4000/api/auth/demo | Logout / dev demo login |
 | `POST` | http://localhost:4000/api/emails/schedule | `{subject, body, recipients[], scheduledAt, delayBetweenMs, hourlyLimit}` |
 | `GET` | http://localhost:4000/api/emails?status=&q=&limit=&offset= | List (SQL filters) |
+| `GET` | http://localhost:4000/api/emails/:id | Single email + its sender (powers the in-app preview page at `/emails/:id`) |
 | `GET` | http://localhost:4000/api/emails/search?q= | Full-text search (Elasticsearch / SQL fallback) |
 | `POST` | http://localhost:4000/api/emails/:id/retry · http://localhost:4000/api/emails/:id/cancel | Retry a failed email / cancel a scheduled one |
 | `GET` | http://localhost:4000/api/senders | Sender accounts |
 | `GET` | http://localhost:4000/api/slack/connect · http://localhost:4000/api/slack/callback · http://localhost:4000/api/slack/status · http://localhost:4000/api/slack/disconnect | Slack OAuth + state |
+| `GET` | http://localhost:4000/api/slack/alerts | Rate-limit alert log (stored regardless of Slack delivery) |
 | `GET` | http://localhost:4000/admin/queues | Live BullMQ dashboard |
 
 ---
