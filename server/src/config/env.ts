@@ -45,6 +45,10 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v === 'true'),
 
+  // Optional Brevo REST delivery (port 443 — used on hosts whose egress
+  // blocks outbound SMTP, e.g. Render free tier). Takes precedence over SMTP.
+  BREVO_API_KEY: z.string().optional(),
+
   MIN_DELAY_BETWEEN_SENDS_MS: z.coerce.number().default(2000),
   WORKER_CONCURRENCY: z.coerce.number().default(5),
   MAX_EMAILS_PER_HOUR_PER_SENDER: z.coerce.number().default(50),
