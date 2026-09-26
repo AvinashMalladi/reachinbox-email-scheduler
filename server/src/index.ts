@@ -3,6 +3,7 @@ import { env } from './config/env';
 import { knex } from './db/knex';
 import { redis, redisPubSub } from './lib/redis';
 import { ensureEtherealSenders } from './services/senders';
+import { probeEthereal } from './services/emailSender';
 import { initSearch } from './services/search';
 import { recoverPendingJobs } from './services/recovery';
 import { startWorker } from './queue/worker';
@@ -28,6 +29,13 @@ async function bootstrap() {
     try {
       const senders = await ensureEtherealSenders();
       console.log(`[init] ${senders.length} sender(s) ready (${senders.map((s) => s.email).join(', ')})`);
+      if (senders.length) {
+        const reachable = await probeEthereal(senders[0].host, senders[0].port);
+        console.log(
+          `[init] Ethereal SMTP reachable from this host: ${reachable ? 'yes' : 'no'}` +
+            `${!reachable && env.BREVO_API_KEY ? ' — delivery will fall back to the Brevo API automatically' : ''}`,
+        );
+      }
     } catch (err) {
       console.warn('[init] sender provisioning failed — scheduling will report a clear error:', (err as Error).message);
     }
