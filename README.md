@@ -285,9 +285,11 @@ npm run dev                 # <http://localhost:5173> (web app)
    # Optional — deep-link the connect flow so users skip Slack's "enter workspace URL" screen:
    SLACK_TEAM_DOMAIN=reachinbox-x8j2771
    ```
-   When `SLACK_TEAM_DOMAIN` is set, **Connect Slack** redirects to
-   `https://<team-domain>.slack.com/oauth/v2/authorize` instead of `slack.com/oauth/v2/authorize`, so new
-   users go straight to signing in — the workspace is pre-selected, no URL typing.
+   **The live instance installs into this workspace: <https://reachinbox-x8j2771.slack.com>** (that's what
+   `SLACK_TEAM_DOMAIN` is set to). When it's configured, **Connect Slack** redirects to
+   `https://reachinbox-x8j2771.slack.com/oauth/v2/authorize` (instead of `slack.com/oauth/v2/authorize`), so
+   new users go straight to signing in — the workspace is pre-selected, no URL typing. Invite the app with
+   `/invite @ReachInbox` in your target channel, then click **Connect Slack**.
 3. Click **Connect Slack** in the dashboard header → you land on that workspace's sign-in → authorize →
    done. Every sender is provisioned to the workspace, so all users share one connection.
 4. Schedule a batch with a low `hourlyLimit` (e.g. 3 for 8 emails): when the limit is hit the workspace
