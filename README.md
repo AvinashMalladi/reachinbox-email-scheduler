@@ -48,6 +48,33 @@ If Chrome (or Edge, which uses the same engine) shows a red **"Deceptive site ah
 
 ---
 
+## 🚉 Also deployed on Railway (second deployment / backup)
+
+The **same repo** (root `Dockerfile` + `railway.json`) also runs live on Railway, so there are two
+independently deployable instances of the identical stack:
+
+| What | URL |
+|---|---|
+| **Railway app — login / dashboard** | https://reachinbox-email-scheduler-production-39aa.up.railway.app |
+| **BullMQ queue dashboard** (Bull Board) | https://reachinbox-email-scheduler-production-39aa.up.railway.app/admin/queues |
+| **Health check** | https://reachinbox-email-scheduler-production-39aa.up.railway.app/api/health |
+
+- Both deployments share the same **Neon Postgres + Upstash Redis**, so they see the same data; both
+  BullMQ workers are safe to run concurrently (Redis-backed counters + DB idempotency guard — no double
+  sends).
+- **Same keeping in mind:** this free-host family also cannot reach Ethereal's SMTP from its egress IPs
+  (probe-negative on both platforms), so the automatic Brevo fallback engages here too — mirrored by the
+  in-app preview banner. The stack, queue board, scheduling, search, and previews are all fully live on
+  both.
+- **To enable Google/Slack OAuth on Railway** (demo login already works without this): add
+  `https://reachinbox-email-scheduler-production-39aa.up.railway.app/api/auth/google/callback` to the
+  Google OAuth client's **Authorized redirect URIs**, and the same origin's `/api/slack/callback` to the
+  Slack app's **Redirect URLs**.
+- Deploy/insights commands (Railway CLI): `railway up` from the repo root, `railway logs`,
+  `railway domain list`, `railway variable list`.
+
+---
+
 ## ⚡ Quickstart for reviewers (5 minutes)
 
 ```bash
