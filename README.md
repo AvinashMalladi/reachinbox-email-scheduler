@@ -46,7 +46,7 @@ npm run dev
 
 Then open **<http://localhost:5173>** → **Demo Login** → you're in.
 
-- No SMTP config needed — Ethereal senders are **auto-provisioned at boot**.
+- No SMTP config needed — Ethereal senders are **auto-provisioned at boot**, and **Ethereal SMTP is the primary mailer** (per the spec). On hosts where Ethereal's SMTP is unreachable (see the hosted section) delivery falls back to Brevo's HTTPS API automatically.
 - Elasticsearch is optional — search falls back to PostgreSQL `ILIKE` if ES isn't running.
 - Live queue dashboard: **<http://localhost:4000/admin/queues>** · Health: **<http://localhost:4000/api/health>**
 - (Optional) live Slack rate-limit alerts: see [Slack notifications](#slack-notifications-real) below.
@@ -66,8 +66,8 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 | **PostgreSQL** | Neon | Free serverless Postgres (14GB) — copy its *connection string* |
 | **Redis** | Upstash | Free Redis (TLS) — copy its `REDIS_URL` |
 | **Elasticsearch** | — (optional) | Set `ES_ENABLED=false`; search falls back to Postgres `ILIKE`. The demo video shows live ES queries from the local setup. |
-| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed. Every sent row gets an **Ethereal preview URL**. |
-| **Delivery on hosted** | Brevo REST (HTTPS/443) | Render free tier's egress blocks outbound SMTP (587/465/2525 all fail), so for **real delivery on the hosted link** set `BREVO_API_KEY` to a Brevo **master API key** (`xkeysib-…`, Brevo → Settings → SMTP & API → API Keys). Delivery then goes over HTTP port 443 — no SMTP needed. Without it, hosted sends will show `Connection timeout`. |
+| **Ethereal SMTP** | ethereal.email | **Primary mailer (as the spec requires).** Senders auto-provisioned at boot — no secrets needed. Every Ethereal-sent row gets an **Ethereal preview URL** + an in-app preview. |
+| **Delivery on hosted** | Ethereal SMTP → auto-fallback to Brevo REST | The mailer probes Ethereal's SMTP once at boot. Render free tier's egress blocks **all** outbound connections (587/465/2525), so the probe fails there and delivery automatically falls back to Brevo's HTTPS API (port 443). Optional `BREVO_API_KEY` (master key `xkeysib-…`, Brevo → Settings → SMTP & API → API Keys) + `EMAIL_FALLBACK_FROM` (a verified sender address) make hosted delivery real; locally it stays pure Ethereal with preview links. |
 | **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). |
 
 **Deploy steps (≈10 min):**
@@ -82,7 +82,7 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
    - `FRONTEND_URL` ← `https://<your-service>.onrender.com`
    - `GOOGLE_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/auth/google/callback`
    - `SLACK_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/slack/callback`
-   - `BREVO_API_KEY` ← Brevo master API key (`xkeysib-…`) when you want real delivery from Render (see the table above)
+   - `SENDERS`: Ethereal senders are auto-provisioned — no config needed. For the **hosted** Ethereal→Brevo fallback: `BREVO_API_KEY` ← Brevo master API key (`xkeysib-…`) and `EMAIL_FALLBACK_FROM` ← a sender address Brevo accepts (e.g. your own email).
    - add `https://<your-service>.onrender.com/api/auth/google/callback` to your Google OAuth client's **Authorized redirect URIs**
    - add `https://<your-service>.onrender.com/api/slack/callback` under **Redirect URLs** in your Slack app (api.slack.com → OAuth) and **Save URLs**
 6. That's it — open the link, click **Demo Login**, and the whole stack (queue dashboard at `/admin/queues`, scheduling, Ethereal + Slack live calls) works.
