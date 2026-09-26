@@ -78,6 +78,8 @@ export function ensureEtherealSenders(count = env.ETHEREAL_SENDERS_COUNT): Promi
   }
 
   provisioningPromise = (async () => {
+    // Clean up rows left behind by a previous relay-mode boot.
+    await knex('senders').where({ is_ethereal: false }).del();
     const existing = await knex('senders').orderBy('created_at', 'asc');
 
     if (existing.length >= count) {
@@ -103,7 +105,7 @@ export function ensureEtherealSenders(count = env.ETHEREAL_SENDERS_COUNT): Promi
       email: cred.email,
       name: `Ethereal Sender ${base + i}`,
       host: 'smtp.ethereal.email',
-      port: 587,
+      port: env.ETHEREAL_SMTP_PORT,
       username: cred.email,
       password: cred.pass,
       is_ethereal: true,

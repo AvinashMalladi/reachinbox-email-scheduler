@@ -34,6 +34,8 @@ const envSchema = z.object({
   ETHEREAL_PASSWORD: z.string().optional(),
   ETHEREAL_SENDERS: z.string().optional(),
   ETHEREAL_SENDERS_COUNT: z.coerce.number().default(3),
+  // Alternate Ethereal SMTP port (2525) for hosts whose egress blocks 587/465.
+  ETHEREAL_SMTP_PORT: z.coerce.number().default(587),
 
   // Optional real SMTP relay (hosted deploys where Ethereal is unreachable).
   SMTP_HOST: z.string().optional(),
