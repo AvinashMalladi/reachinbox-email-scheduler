@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { ExternalLink, Eye, RotateCcw, XCircle } from 'lucide-react';
 import type { EmailItem } from '../types/api';
 import { EmptyState, SkeletonRows, StatusBadge } from './ui';
-import { EmailPreviewModal } from './EmailPreviewModal';
 
 export type TableMode = 'scheduled' | 'sent';
 
@@ -31,7 +31,6 @@ function formatTime(value: string | null | undefined): string {
 
 export function EmailTable({ mode, items, loading, onRetry, onCancel, emptyTitle, emptyDescription }: Props) {
   const isSent = mode === 'sent';
-  const [previewEmail, setPreviewEmail] = useState<EmailItem | null>(null);
 
   const renderRow = useCallback(
     (email: EmailItem) => (
@@ -50,13 +49,13 @@ export function EmailTable({ mode, items, loading, onRetry, onCancel, emptyTitle
         </td>
         <td className="px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-1">
-            <button
-              onClick={() => setPreviewEmail(email)}
+            <Link
+              to={`/emails/${email.id}`}
               className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-brand-600"
               title="Preview email"
             >
               <Eye className="h-4 w-4" />
-            </button>
+            </Link>
             {email.previewUrl && (
               <a
                 href={email.previewUrl}
@@ -106,22 +105,19 @@ export function EmailTable({ mode, items, loading, onRetry, onCancel, emptyTitle
   }
 
   return (
-    <>
-      <div className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead>
-            <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Subject</th>
-              <th className="px-4 py-3">{isSent ? 'Sent time' : 'Scheduled time'}</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">{loading ? <SkeletonRows /> : items.map(renderRow)}</tbody>
-        </table>
-      </div>
-      <EmailPreviewModal email={previewEmail} onClose={() => setPreviewEmail(null)} />
-    </>
+    <div className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200">
+      <table className="min-w-full divide-y divide-slate-200">
+        <thead>
+          <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <th className="px-4 py-3">Email</th>
+            <th className="px-4 py-3">Subject</th>
+            <th className="px-4 py-3">{isSent ? 'Sent time' : 'Scheduled time'}</th>
+            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">{loading ? <SkeletonRows /> : items.map(renderRow)}</tbody>
+      </table>
+    </div>
   );
 }

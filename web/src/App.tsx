@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './lib/auth';
 import { ToastProvider } from './lib/toast';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { EmailPreviewPage } from './pages/EmailPreviewPage';
 import { Spinner } from './components/ui';
 
 function Gate({ children }: { children: React.ReactNode }) {
@@ -31,12 +32,8 @@ function Gate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function ProtectedDashboard() {
-  return (
-    <Gate>
-      <DashboardPage />
-    </Gate>
-  );
+function Protected({ children }: { children: React.ReactNode }) {
+  return <Gate>{children}</Gate>;
 }
 
 export default function App() {
@@ -46,7 +43,8 @@ export default function App() {
         <AuthProvider>
           <Routes>
             <Route path="/" element={<LoginPage />} />
-            <Route path="/dashboard" element={<ProtectedDashboard />} />
+            <Route path="/dashboard" element={<Protected><DashboardPage /></Protected>} />
+            <Route path="/emails/:id" element={<Protected><EmailPreviewPage /></Protected>} />
             <Route path="*" element={<LoginPage />} />
           </Routes>
         </AuthProvider>

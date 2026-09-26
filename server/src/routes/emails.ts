@@ -120,6 +120,19 @@ router.get(
   }),
 );
 
+router.get(
+  '/:id',
+  wrap(async (req, res) => {
+    const row = (await knex('email_jobs')
+      .select('email_jobs.*', 'senders.email as sender_email')
+      .leftJoin('senders', 'senders.id', 'email_jobs.sender_id')
+      .where({ 'email_jobs.id': req.params.id, 'email_jobs.user_id': req.user!.id })
+      .first()) as (EmailJobRow & { sender_email: string | null }) | undefined;
+    if (!row) return res.status(404).json({ error: 'Email not found' });
+    res.json(toApiEmail(row));
+  }),
+);
+
 router.post(
   '/:id/retry',
   wrap(async (req, res) => {
