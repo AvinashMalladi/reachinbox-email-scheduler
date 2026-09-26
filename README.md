@@ -13,12 +13,15 @@ ReachInbox does under the hood.
 
 | What | URL |
 |---|---|
-| **App (SPA + API + worker)** | https://reachinbox-email-scheduler-dw9n.onrender.com |
-| **Live BullMQ queue dashboard** | https://reachinbox-email-scheduler-dw9n.onrender.com/admin/queues |
+| **App — login / scheduler dashboard** (Scheduled + Sent tabs, compose, search) | https://reachinbox-email-scheduler-dw9n.onrender.com/ |
+| **Dashboard (direct)** | https://reachinbox-email-scheduler-dw9n.onrender.com/dashboard |
+| **Email preview page** (per message — also reached via **Actions → preview**) | https://reachinbox-email-scheduler-dw9n.onrender.com/emails/:id |
+| **Live BullMQ queue dashboard** (Bull Board) | https://reachinbox-email-scheduler-dw9n.onrender.com/admin/queues |
 | **Health check** | https://reachinbox-email-scheduler-dw9n.onrender.com/api/health |
 
 > Free-tier instance — it sleeps after ~15 min idle, so the **first load can take ~30–50s**; refresh once.
 > Demo login = one click (no external credentials needed). Google/Slack OAuth are configured for this same URL.
+> **`admin/queues` and `dashboard`/`emails/:id` require the login session first** — `/api/health` does not.
 
 ---
 
@@ -217,7 +220,9 @@ npm run dev                 # <http://localhost:5173> (web app)
 
 | Service | URL |
 |---|---|
-| Web app (React dashboard) | <http://localhost:5173> |
+| Web app — login (demo → dashboard) | <http://localhost:5173> |
+| Scheduler dashboard (Scheduled / Sent tabs) | <http://localhost:5173/dashboard> |
+| Email preview page (per message ID) | <http://localhost:5173/emails/:id> |
 | API health check | <http://localhost:4000/api/health> |
 | BullMQ live queue dashboard | <http://localhost:4000/admin/queues> |
 | Google OAuth login | <http://localhost:4000/api/auth/google> |
