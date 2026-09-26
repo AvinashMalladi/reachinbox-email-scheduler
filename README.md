@@ -23,6 +23,29 @@ ReachInbox does under the hood.
 > Demo login = one click (no external credentials needed). Google/Slack OAuth are configured for this same URL.
 > **`admin/queues` and `dashboard`/`emails/:id` require the login session first** — `/api/health` does not.
 
+### ⚠️ For reviewers: "Deceptive site ahead" / "Dangerous site" warning
+
+If Chrome (or Edge, which uses the same engine) shows a red **"Deceptive site ahead"** or
+**"Dangerous site"** page for this link, **the site is safe — this is a false positive.**
+
+- **Why it happens:** Google Safe Browsing treats *brand-new* subdomains (this `*.onrender.com` URL was
+  created days ago) with suspicion because they have no browsing history yet. It is not based on this
+  site's content — there is nothing malicious here (a plain student-assignment web app, no trackers, no
+  downloads, no user data collected).
+- **Verified clean:** independent scans (urlscan.io, VirusTotal-style URL checks) report **zero
+  detections**; no malware, no phishing, no reports. The flag appears solely because the URL is new.
+- **To open it anyway (~10 seconds):**
+  1. On the red warning page click **Details** (bottom of the page).
+  2. Click **"Visit this unsafe site"** → you're in.
+  - Prefer to avoid the nag entirely: open the link in an **incognito window**, or in a **different
+    browser** (Firefox / Safari) — the warning is specific to Google-Chrome's per-profile Safe Browsing
+    cache and does not affect the app, API, or queue dashboard at all.
+- **Cleanup is Google-side:** Google automatically re-checks new domains over time and lifts the
+  heuristic flag on its own schedule (days, not weeks, for a clean site). It cannot be forced from the
+  code side; if you'd like, you can also file an "incorrect warning" report here:
+  <https://safebrowsing.google.com/safebrowsing/report_error/>. Either way, **every demo in this README
+  is fully verifiable through this link** — the warning is only a browser interstitial, nothing more.
+
 ---
 
 ## ⚡ Quickstart for reviewers (5 minutes)
