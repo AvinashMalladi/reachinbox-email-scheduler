@@ -66,7 +66,8 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
 | **PostgreSQL** | Neon | Free serverless Postgres (14GB) — copy its *connection string* |
 | **Redis** | Upstash | Free Redis (TLS) — copy its `REDIS_URL` |
 | **Elasticsearch** | — (optional) | Set `ES_ENABLED=false`; search falls back to Postgres `ILIKE`. The demo video shows live ES queries from the local setup. |
-| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed. If Ethereal's SMTP is unreachable from a cloud egress IP, set `SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASSWORD/SMTP_SECURE` env vars to relay through a real SMTP provider (e.g. Gmail App Password: `smtp.gmail.com:465`, `SMTP_SECURE=true`). |
+| **Ethereal SMTP** | ethereal.email | Senders auto-provisioned at boot — no secrets needed. Every sent row gets an **Ethereal preview URL**. |
+| **Delivery on hosted** | Brevo REST (HTTPS/443) | Render free tier's egress blocks outbound SMTP (587/465/2525 all fail), so for **real delivery on the hosted link** set `BREVO_API_KEY` to a Brevo **master API key** (`xkeysib-…`, Brevo → Settings → SMTP & API → API Keys). Delivery then goes over HTTP port 443 — no SMTP needed. Without it, hosted sends will show `Connection timeout`. |
 | **Google/Slack OAuth** | Google Cloud + api.slack.com | Fill the env vars below (both already configured for localhost). |
 
 **Deploy steps (≈10 min):**
@@ -81,6 +82,7 @@ One web service runs the **API + BullMQ worker + built React SPA** on the same o
    - `FRONTEND_URL` ← `https://<your-service>.onrender.com`
    - `GOOGLE_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/auth/google/callback`
    - `SLACK_REDIRECT_URI` ← `https://<your-service>.onrender.com/api/slack/callback`
+   - `BREVO_API_KEY` ← Brevo master API key (`xkeysib-…`) when you want real delivery from Render (see the table above)
    - add `https://<your-service>.onrender.com/api/auth/google/callback` to your Google OAuth client's **Authorized redirect URIs**
    - add `https://<your-service>.onrender.com/api/slack/callback` under **Redirect URLs** in your Slack app (api.slack.com → OAuth) and **Save URLs**
 6. That's it — open the link, click **Demo Login**, and the whole stack (queue dashboard at `/admin/queues`, scheduling, Ethereal + Slack live calls) works.
