@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import net from 'node:net';
+import { knex } from '../db/knex';
 import { env } from '../config/env';
 import type { SenderRow } from '../types/db';
 
@@ -42,25 +43,45 @@ export function probeEthereal(host: string, port: number): Promise<boolean> {
   return probePromise;
 }
 
-/** Read-only view of the delivery pipeline for the Operations Center. */
-export function getMailerStatus(): {
+export type MailerStatus = {
   mode: 'ethereal' | 'brevo-fallback' | 'smtp-relay' | 'unconfigured';
   etherealProbed: boolean;
   etherealReachable: boolean | null;
+  hasEtherealSenders: boolean;
   hasBrevoFallback: boolean;
   hasSmtpRelay: boolean;
   etherealPort: number;
-} {
-  const mode = env.ETHEREAL_USER && env.ETHEREAL_PASSWORD
-    ? (etherealReachable === false && env.BREVO_API_KEY ? 'brevo-fallback' : 'ethereal')
-    : env.SMTP_HOST
-      ? 'smtp-relay'
-      : 'unconfigured';
+};
+
+/** Read-only view of the delivery pipeline for the Operations Center. */
+export async function getMailerStatus(): Promise<MailerStatus> {
+  const etherealRows = await knex('senders')
+    .where({ is_ethereal: true })
+    .limit(1);
+  const hasEtherealSenders = etherealRows.length > 0;
+  const hasBrevoFallback = Boolean(env.BREVO_API_KEY);
+
+  let mode: MailerStatus['mode'];
+  if (env.SMTP_HOST) {
+    mode = 'smtp-relay';
+  } else if (hasEtherealSenders && etherealReachable !== false) {
+    // Ethereal senders exist and the host can reach Ethereal's SMTP (or the
+    // one-shot probe hasn't resolved yet — assume primary mailer until then).
+    mode = 'ethereal';
+  } else if (hasEtherealSenders || hasBrevoFallback) {
+    // Ethereal unreachable on this host → Brevo HTTP fallback, or Brevo used
+    // directly when no Ethereal accounts could be provisioned.
+    mode = 'brevo-fallback';
+  } else {
+    mode = 'unconfigured';
+  }
+
   return {
     mode,
     etherealProbed: etherealReachable !== null || probePromise !== null,
     etherealReachable,
-    hasBrevoFallback: Boolean(env.BREVO_API_KEY),
+    hasEtherealSenders,
+    hasBrevoFallback,
     hasSmtpRelay: Boolean(env.SMTP_HOST),
     etherealPort: env.ETHEREAL_SMTP_PORT,
   };

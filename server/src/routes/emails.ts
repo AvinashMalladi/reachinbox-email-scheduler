@@ -134,7 +134,7 @@ router.get(
     const byStatus: Record<string, number> = {};
     for (const row of rows) byStatus[row.status] = Number(row.count);
 
-    const senders = await knex('senders').where({ user_id: req.user!.id }).count<Array<{ count: string }>>('* as count');
+    const senders = await knex('senders').count<Array<{ count: string }>>('* as count');
     const senderCount = Number(senders[0].count);
 
     const todayStart = new Date();

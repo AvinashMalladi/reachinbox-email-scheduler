@@ -23,12 +23,12 @@ router.get(
   wrap(async (req, res) => {
     const [queueCounts, mailer, search, slack] = await Promise.all([
       emailQueue.getJobCounts().catch(() => null),
-      Promise.resolve(getMailerStatus()),
+      getMailerStatus().catch(() => null),
       Promise.resolve(searchHealth()),
       getSlackConnection(req.user!.id).catch(() => null),
     ]);
 
-    const senders = await knex('senders').where({ user_id: req.user!.id }).count({ count: '*' });
+    const senders = await knex('senders').count({ count: '*' });
     const senderCount = Number(senders[0]?.count ?? 0);
 
     res.json({
@@ -42,7 +42,7 @@ router.get(
             paused: queueCounts.paused ?? 0,
           }
         : null,
-      mailer,
+      mailer: mailer ?? { mode: 'unconfigured' as const },
       elasticsearch: search,
       slack: {
         configured: Boolean(env.SLACK_CLIENT_ID && env.SLACK_CLIENT_SECRET),
