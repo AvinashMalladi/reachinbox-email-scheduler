@@ -100,6 +100,20 @@ router.get(
   }),
 );
 
+// GET /api/slack/alerts → recent rate-limit alerts for the current user.
+// These are always persisted (whether or not Slack delivered them), so the
+// rate-limit feature stays visible in-app even when Slack is not connected.
+router.get(
+  '/alerts',
+  wrap(async (req, res) => {
+    const rows = await knex('slack_alerts')
+      .where({ user_id: req.user!.id })
+      .orderBy('created_at', 'desc')
+      .limit(5);
+    res.json({ items: rows });
+  }),
+);
+
 router.post(
   '/disconnect',
   wrap(async (req, res) => {

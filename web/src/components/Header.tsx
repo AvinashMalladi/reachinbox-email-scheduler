@@ -1,19 +1,28 @@
 import { useEffect, useState } from 'react';
-import { LogOut, Slack } from 'lucide-react';
-import type { AuthUser, SlackStatus } from '../types/api';
+import { LogOut, Slack, X } from 'lucide-react';
+import type { AuthUser, SlackStatus, SlackAlert } from '../types/api';
 import { apiGet } from '../lib/api';
 import { Button } from './ui';
 
 export function Header({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const [slack, setSlack] = useState<SlackStatus | null>(null);
+  const [alerts, setAlerts] = useState<SlackAlert[]>([]);
+  const [showSlackModal, setShowSlackModal] = useState(false);
+  const [dismissedAt, setDismissedAt] = useState(0);
 
   useEffect(() => {
     apiGet<SlackStatus>('/api/slack/status').then(setSlack).catch(() => setSlack(null));
+    apiGet<{ items: SlackAlert[] }>('/api/slack/alerts')
+      .then((r) => setAlerts(r.items))
+      .catch(() => setAlerts([]));
   }, []);
 
-  const connectSlack = () => {
+  const goToSlack = () => {
+    if (!slack?.configured) return;
     window.location.href = '/api/slack/connect?redirect=/dashboard';
   };
+
+  const latestAlert = alerts.find((a) => new Date(a.created_at).getTime() > dismissedAt) ?? null;
 
   const initials = (user.name ?? user.email)
     .split(/[\s@.]+/)
@@ -23,59 +32,163 @@ export function Header({ user, onLogout }: { user: AuthUser; onLogout: () => voi
     .join('');
 
   return (
-    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white">
-            RI
-          </div>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold text-slate-800">ReachInbox</p>
-            <p className="text-xs text-slate-500">Email Scheduler</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {slack && (
+    <>
+      {latestAlert && (
+        <div className="bg-amber-50 text-amber-900 ring-1 ring-amber-200 sm:sticky sm:top-16 sm:z-30">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2 text-xs sm:px-6">
+            <p>
+              Rate limit reached for <span className="font-semibold">{latestAlert.sender_email}</span> — next
+              emails delayed until{' '}
+              <span className="font-semibold">{new Date(latestAlert.next_window_start).toLocaleTimeString()}</span>.
+              {latestAlert.delivered_slack
+                ? ' You were notified in Slack.'
+                : ' Connect Slack to get these alerts in your workspace.'}
+            </p>
             <button
-              onClick={connectSlack}
-              className={
-                'hidden items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors sm:inline-flex ' +
-                (slack.connected
-                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
-                  : 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50')
-              }
-              title={slack.connected ? 'Slack connected — click to reconnect' : 'Get notified when a rate limit is hit'}
+              onClick={() => setDismissedAt(Date.now())}
+              className="shrink-0 rounded-md p-1 hover:bg-amber-200/60"
+              aria-label="Dismiss alert"
+              title="Dismiss"
             >
-              <Slack className="h-4 w-4" />
-              {slack.connected ? 'Slack connected' : 'Connect Slack'}
+              <X className="h-3.5 w-3.5" />
             </button>
-          )}
+          </div>
+        </div>
+      )}
 
-          <div className="hidden text-right leading-tight sm:block">
-            <p className="text-sm font-medium text-slate-800">{user.name ?? 'User'}</p>
-            <p className="text-xs text-slate-500">{user.email}</p>
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/80 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white">
+              RI
+            </div>
+            <div className="leading-tight">
+              <p className="text-sm font-semibold text-slate-800">ReachInbox</p>
+              <p className="text-xs text-slate-500">Email Scheduler</p>
+            </div>
           </div>
 
-          {user.avatar ? (
-            <img
-              src={user.avatar}
-              alt={user.name ?? user.email}
-              className="h-9 w-9 rounded-full ring-1 ring-slate-200"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
-              {initials || 'U'}
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            {slack && (
+              <button
+                onClick={() => setShowSlackModal(true)}
+                className={
+                  'hidden items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 transition-colors sm:inline-flex ' +
+                  (slack.connected
+                    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 hover:bg-emerald-100'
+                    : slack.configured
+                      ? 'bg-white text-slate-600 ring-slate-300 hover:bg-slate-50'
+                      : 'bg-slate-50 text-slate-400 ring-slate-200 cursor-not-allowed')
+                }
+                title={
+                  slack.connected
+                    ? 'Slack connected — click to reconnect'
+                    : slack.configured
+                      ? 'Get notified when a rate limit is hit'
+                      : 'Slack is not configured on the server'
+                }
+              >
+                <Slack className="h-4 w-4" />
+                {slack.connected ? 'Slack connected' : 'Connect Slack'}
+              </button>
+            )}
 
-          <Button variant="ghost" onClick={onLogout} className="px-2" aria-label="Logout" title="Logout">
-            <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </Button>
+            <div className="hidden text-right leading-tight sm:block">
+              <p className="text-sm font-medium text-slate-800">{user.name ?? 'User'}</p>
+              <p className="text-xs text-slate-500">{user.email}</p>
+            </div>
+
+            {user.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.name ?? user.email}
+                className="h-9 w-9 rounded-full ring-1 ring-slate-200"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
+                {initials || 'U'}
+              </div>
+            )}
+
+            <Button variant="ghost" onClick={onLogout} className="px-2" aria-label="Logout" title="Logout">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {showSlackModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setShowSlackModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-base font-semibold text-slate-800">
+                <Slack className="h-5 w-5 text-emerald-600" />
+                {slack?.connected ? 'Slack is connected' : 'Connect Slack notifications'}
+              </h3>
+              <button
+                onClick={() => setShowSlackModal(false)}
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {slack?.connected ? (
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                Rate-limit alerts are being posted to <span className="font-semibold">{slack.team ?? 'your workspace'}</span>
+                {slack.channelId ? ` (channel #${slack.channelId})` : ''}. Clicking through below will re-authorize.
+              </p>
+            ) : (
+              <>
+                <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                  When any sender hits its hourly limit, ReachInbox posts a heads-up to a Slack channel. Connecting
+                  takes about 30 seconds:
+                </p>
+                <ol className="mt-3 space-y-2 text-sm text-slate-600">
+                  <li>
+                    <span className="font-semibold text-slate-800">1.</span> Slack will ask you to sign in and pick the
+                    workspace to install the app into. If you don't see it listed, it may ask for the workspace's URL —
+                    that's Slack's own screen, and typing your workspace URL is expected.
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-800">2.</span> Review the permissions and{' '}
+                    <span className="font-semibold text-slate-800">Allow</span> the <em>ReachInbox</em> app (it only
+                    sends messages and reads channels).
+                  </li>
+                  <li>
+                    <span className="font-semibold text-slate-800">3.</span> You're redirected back here and the header
+                    badge turns green.
+                  </li>
+                </ol>
+                <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                  Alerts are posted in the workspace's <code>#general</code> channel. Don't worry if you'd rather not —
+                  rate-limit notices also appear in a banner here.
+                </p>
+              </>
+            )}
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setShowSlackModal(false)}>
+                {slack?.connected ? 'Close' : 'Not now'}
+              </Button>
+              {!slack?.connected && (
+                <Button onClick={goToSlack}>
+                  {slack?.configured ? 'Continue to Slack' : 'Slack is not configured'}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

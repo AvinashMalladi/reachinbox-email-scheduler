@@ -1,6 +1,39 @@
 import { knex } from '../db/knex';
 import type { SlackConnectionRow } from '../types/db';
 
+export type SlackAlertRow = {
+  id: string;
+  user_id: string;
+  sender_email: string;
+  limit: number;
+  next_window_start: Date;
+  channel: string | null;
+  delivered_slack: boolean;
+  created_at: Date;
+};
+
+async function recordAlert(data: {
+  userId: string;
+  senderEmail: string;
+  limit: number;
+  nextWindowStart: number;
+  channel?: string | null;
+  deliveredSlack: boolean;
+}): Promise<void> {
+  try {
+    await knex('slack_alerts').insert({
+      user_id: data.userId,
+      sender_email: data.senderEmail,
+      limit: data.limit,
+      next_window_start: new Date(data.nextWindowStart),
+      channel: data.channel ?? null,
+      delivered_slack: data.deliveredSlack,
+    });
+  } catch (err) {
+    console.error('[slack] failed to record alert:', err instanceof Error ? err.message : err);
+  }
+}
+
 export async function getSlackConnection(userId: string): Promise<SlackConnectionRow | null> {
   return (await knex('slack_connections').where({ user_id: userId }).first()) ?? null;
 }
@@ -51,7 +84,14 @@ export async function notifyRateLimitHit(opts: {
 }): Promise<SlackNotifyResult> {
   const conn = await getSlackConnection(opts.email.user_id);
   if (!conn) {
-    console.log(`[slack] rate limit hit for ${opts.sender.email} but ${opts.email.user_id} is not connected to Slack — skipping notification`);
+    console.log(`[slack] rate limit hit for ${opts.sender.email} but ${opts.email.user_id} is not connected to Slack — recorded as in-app alert`);
+    await recordAlert({
+      userId: opts.email.user_id,
+      senderEmail: opts.sender.email,
+      limit: opts.limit,
+      nextWindowStart: opts.nextWindowStart,
+      deliveredSlack: false,
+    });
     return { notified: false, reason: 'not-connected' };
   }
 
@@ -76,13 +116,37 @@ export async function notifyRateLimitHit(opts: {
     const body = (await response.json()) as { ok: boolean; error?: string };
     if (!body.ok) {
       console.error(`[slack] chat.postMessage error: ${body.error}`);
+      await recordAlert({
+        userId: opts.email.user_id,
+        senderEmail: opts.sender.email,
+        limit: opts.limit,
+        nextWindowStart: opts.nextWindowStart,
+        channel,
+        deliveredSlack: false,
+      });
       return { notified: false, reason: body.error };
     }
     console.log(`[slack] rate-limit notification posted to ${channel}`);
+    await recordAlert({
+      userId: opts.email.user_id,
+      senderEmail: opts.sender.email,
+      limit: opts.limit,
+      nextWindowStart: opts.nextWindowStart,
+      channel,
+      deliveredSlack: true,
+    });
     return { notified: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[slack] notify failed:', message);
+    await recordAlert({
+      userId: opts.email.user_id,
+      senderEmail: opts.sender.email,
+      limit: opts.limit,
+      nextWindowStart: opts.nextWindowStart,
+      channel,
+      deliveredSlack: false,
+    });
     return { notified: false, reason: message };
   }
 }

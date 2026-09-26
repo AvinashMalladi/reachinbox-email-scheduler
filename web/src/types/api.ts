@@ -66,6 +66,16 @@ export interface SlackStatus {
   channelId?: string | null;
 }
 
+export interface SlackAlert {
+  id: string;
+  sender_email: string;
+  limit: number;
+  next_window_start: string;
+  channel: string | null;
+  delivered_slack: boolean;
+  created_at: string;
+}
+
 export interface AuthConfig {
   googleConfigured: boolean;
   demoLogin: boolean;
